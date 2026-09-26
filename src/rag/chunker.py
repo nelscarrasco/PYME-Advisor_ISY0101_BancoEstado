@@ -37,6 +37,10 @@ class SemanticChunker:
             # Extraer artículo si aplica
             art_match = re.search(r"(Art[íi]culo\s+\d+)", section, re.IGNORECASE)
             article_ref = art_match.group(1).title() if art_match else "General"
+            # En el catálogo, las secciones numeradas ("## 2. Leasing ...") se referencian como "Sección N"
+            sec_match = re.match(r"^(\d+)\.\s", heading)
+            if "catalogo" in source and sec_match:
+                article_ref = f"Sección {sec_match.group(1)}"
 
             # Si la sección es pequeña o razonable, se guarda como un solo chunk cohesivo
             if len(section) <= self.max_chunk_chars:

@@ -1,45 +1,59 @@
-Iniciando Batería de Evaluación de Coherencia RAG...
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+Iniciando batería de evaluación de coherencia RAG (IE6)...
+[Aviso] No se pudo conectar a la API en vivo (ProxyError). Usando último valor disponible.
 
-======================================================================
-RESUMEN DE COHERENCIA Y FIDELIDAD NORMATIVA (IE6)
-======================================================================
-Precisión de Dictamen: 100.0%
-Score Promedio de Groundedness: 100.0%
-Consistencia Matemática (UF/CLP): 100.0%
-Latencia Media por Consulta: 0.2088s
+========================================================================
+RESUMEN DE COHERENCIA ENTRE DATOS RECUPERADOS Y RESPUESTAS (IE6)
+========================================================================
+Casos evaluados:                    7
+Modo de generación:                 Motor de síntesis local (reglas)
+Precisión de dictamen:              100.0%
+Recall de recuperación (contexto):  100.0%
+  (línea base: sólo consulta original, top-3: 17.1%)
+Recall de citas esperadas:          100.0%
+Groundedness de citas:              100.0%
+Consistencia matemática UF→CLP:     100.0%
+Latencia media por consulta:        0.039s
 
-Detalle por Caso de Prueba:
+Detalle por caso:
 
-* [Caso 1: Empresa Admisible para Leasing (Biobío SpA)]
-  - Groundedness: 100.0% | Dictamen OK: True
-  - Citas detectadas: ['Art. 7', 'Art. 31', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
-  - Coherencia Matemática: True
+* Caso 1: Leasing de camión, cliente solvente (Transportes Biobío)
+  - Estado esperado/obtenido: PRE-ADMISIBLE / PRE-ADMISIBLE -> OK
+  - Artículos esperados: ['3', '4', '5', '6', '9'] | recuperados: ['1', '3', '4', '5', '6', '7', '8', '9']
+  - Recall recuperación: 100% | Recall citas: 100% | Groundedness: 100%
+  - Citas sin respaldo: ninguna | UF→CLP consistente: True | Similitud máx.: 0.40
 
-* [Caso 2: Bloqueo por Morosidad Comercial (El Trigal EIRL)]
-  - Groundedness: 100.0% | Dictamen OK: True
-  - Citas detectadas: ['Art. 8', 'Art. 7', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
-  - Coherencia Matemática: True
+* Caso 2: Morosidad DICOM sobre $500.000 (Panadería El Trigal)
+  - Estado esperado/obtenido: NO ADMISIBLE / NO ADMISIBLE -> OK
+  - Artículos esperados: ['4'] | recuperados: ['1', '3', '4', '5', '6', '7', '8', '11']
+  - Recall recuperación: 100% | Recall citas: 100% | Groundedness: 100%
+  - Citas sin respaldo: ninguna | UF→CLP consistente: True | Similitud máx.: 0.63
 
-* [Caso 3: Derivación a Comité por Alto Leverage (Constructora del Sur)]
-  - Groundedness: 100.0% | Dictamen OK: True
-  - Citas detectadas: ['Art. 8', 'Art. 11', 'Art. 7', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
-  - Coherencia Matemática: True
+* Caso 3: Leverage 3,4x y DSCR 1,1 (Constructora del Sur)
+  - Estado esperado/obtenido: DERIVACIÓN A COMITÉ ESPECIAL / DERIVACIÓN A COMITÉ ESPECIAL -> OK
+  - Artículos esperados: ['5', '11'] | recuperados: ['1', '3', '4', '5', '6', '7', '8', '11']
+  - Recall recuperación: 100% | Recall citas: 100% | Groundedness: 100%
+  - Citas sin respaldo: ninguna | UF→CLP consistente: True | Similitud máx.: 0.63
 
-* [Caso 4: Empresa con Antigüedad Insuficiente (Frutícola Express)]
-  - Groundedness: 100.0% | Dictamen OK: True
-  - Citas detectadas: ['Art. 8', 'Art. 7', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
-  - Coherencia Matemática: True
+* Caso 4: Antigüedad de 5 meses (Frutícola Express)
+  - Estado esperado/obtenido: NO ADMISIBLE / NO ADMISIBLE -> OK
+  - Artículos esperados: ['3'] | recuperados: ['1', '3', '4', '5', '6', '7', '8', '11']
+  - Recall recuperación: 100% | Recall citas: 100% | Groundedness: 100%
+  - Citas sin respaldo: ninguna | UF→CLP consistente: True | Similitud máx.: 0.63
 
-* [Caso 5: Consulta Normativa FOGAPE]
-  - Groundedness: 100.0% | Dictamen OK: True
-  - Citas detectadas: ['Art. 8', 'Art. 7', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
-  - Coherencia Matemática: True
+* Caso 5: Capital de trabajo, cliente que cumple (TecnoAgro)
+  - Estado esperado/obtenido: PRE-ADMISIBLE / PRE-ADMISIBLE -> OK
+  - Artículos esperados: ['3', '4', '5', '6', '8'] | recuperados: ['1', '3', '4', '5', '6', '7', '8']
+  - Recall recuperación: 100% | Recall citas: 100% | Groundedness: 100%
+  - Citas sin respaldo: ninguna | UF→CLP consistente: True | Similitud máx.: 0.40
+
+* Caso 6: Monto sobre 10.000 UF (TecnoAgro)
+  - Estado esperado/obtenido: DERIVACIÓN A COMITÉ ESPECIAL / DERIVACIÓN A COMITÉ ESPECIAL -> OK
+  - Artículos esperados: ['11'] | recuperados: ['1', '3', '4', '5', '6', '7', '8', '11']
+  - Recall recuperación: 100% | Recall citas: 100% | Groundedness: 100%
+  - Citas sin respaldo: ninguna | UF→CLP consistente: True | Similitud máx.: 0.63
+
+* Caso 7: Consulta general sobre FOGAPE (sin cliente)
+  - Estado esperado/obtenido: INFORMACIÓN GENERAL / INFORMACIÓN GENERAL -> OK
+  - Artículos esperados: ['6'] | recuperados: ['3', '4', '5', '6', '7', '8']
+  - Recall recuperación: 100% | Recall citas: 100% | Groundedness: 100%
+  - Citas sin respaldo: ninguna | UF→CLP consistente: True | Similitud máx.: 0.40

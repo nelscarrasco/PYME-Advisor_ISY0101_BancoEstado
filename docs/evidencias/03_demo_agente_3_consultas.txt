@@ -3,95 +3,102 @@ Iniciando Agente PYME-Advisor...
 ======================================================================
 QUERY: Hola, represento a Transportes y Logistica Biobio SpA (RUT 76.123.456-K). Queremos solicitar 1.500 UF para comprar un nuevo camión de carga. ¿Cumplimos con las políticas del banco y cuánto dinero es en pesos?
 ======================================================================
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+[Aviso] No se pudo conectar a la API en vivo (ProxyError). Usando último valor disponible.
 ### 1. Resumen de la Solicitud y Dictamen Preliminar
-- **Empresa / Razón Social:** Transportes y Logistica Biobio SpA
-- **RUT Institucional:** 76.123.456-K
-- **Monto Solicitado:** 1,500.00 UF (Equivalente exacto a **$61,512,150 CLP** según valor de la UF al día de $41,008.10 CLP [Fuente: API mindicador.cl / Banco Central de Chile])
-- **Estado de Admisibilidad:** **PRE-ADMISIBLE (CUMPLE POLÍTICAS GENERALES DE RIESGO)**
-- **Dictamen:** La empresa cumple satisfactoriamente con la antigüedad operacional, ausencia de morosidad comercial y niveles de apalancamiento normativos.
+- **Empresa / RUT:** Transportes y Logistica Biobio SpA (76.123.456-K)
+- **Monto Solicitado:** 1.500,00 UF, equivalente a **$61.524.420 CLP** con UF de $41.016,28 [Fuente: mindicador.cl (último valor en caché, 2026-09-25; API sin conexión)]
+- **Estado Preliminar:** **PRE-ADMISIBLE**
+- **Fundamento:** Cumple los requisitos generales de admisibilidad del manual. El resultado es preliminar y no constituye aprobación del crédito.
 
 ### 2. Análisis y Fundamentación Normativa (Políticas RAG)
-- **Antigüedad Operacional:** Registra 36 meses de facturación continua en Primera Categoría ante el SII, dando estricto cumplimiento al mínimo de 12 meses [Manual de Crédito, Art. 3].
-- **Comportamiento Comercial:** Monto en DICOM/Boletín Comercial: $0 CLP. Cumple la condición de estar libre de morosidades mayores a $500.000 [Manual de Crédito, Art. 4].
-- **Ratio de Endeudamiento (Leverage):** Nivel de apalancamiento: 1.8x. Se evalúa conforme a los límites de prudencia financiera [Manual de Crédito, Art. 5].
+- **Segmento PYME** — CUMPLE: Ventas anuales de 8.500 UF dentro del rango 800–100.000 UF. [Manual de Crédito, Art. 1]
+- **Antigüedad** — CUMPLE: 36 meses de actividad (mínimo 12). [Manual de Crédito, Art. 3]
+- **Morosidad DICOM** — CUMPLE: Morosidad de $0 CLP (máximo $500.000). [Manual de Crédito, Art. 4]
+- **Leverage** — CUMPLE: Leverage 1,80x dentro del límite de 3,2x para el rubro. [Manual de Crédito, Art. 5]
+- **Cobertura de deuda (DSCR)** — CUMPLE: DSCR 1,45 (mínimo 1,25). [Manual de Crédito, Art. 5]
 
 ### 3. Estructura de Garantías y Cobertura Estatal
-- **Garantía Estatal FOGAPE:** La empresa se ubica en el tramo de ventas de hasta 25.000 UF anuales, accediendo a una garantía estatal **FOGAPE de hasta el 85% del capital insoluto** [Manual de Crédito, Art. 6].
-- **Garantías Reales Adicionales:** El monto solicitado no supera las 3.000 UF, por lo que no se exige hipoteca comercial, bastando el aval de los socios y la garantía FOGAPE [Manual de Crédito, Art. 7].
+- **Garantía FOGAPE:** Ventas de 8.500 UF (tramo hasta 25.000 UF): cobertura FOGAPE de hasta **85%** del capital insoluto [Manual de Crédito, Art. 6].
+- **Garantías reales:** Se constituye prenda sin desplazamiento sobre el activo adquirido [Manual de Crédito, Art. 7].
 
 ### 4. Producto Financiero Recomendado
-- **Línea de Financiamiento:** **Leasing Operativo y Financiero de Activos Fijos** [Catálogo de Productos, Sección 2]
-- **Fundamentación Técnica:** Financiamiento de 24 a 60 meses con cuotas 100% deducibles de impuestos bajo el Art. 31 de la Ley de la Renta. Prenda automática sobre el activo adquirido [Manual de Crédito, Art. 7].
+- **Producto:** **Leasing Operativo y Financiero de Activos Fijos** [Catálogo de Productos, Sección 2]
+- **Condiciones:** Monto mínimo 300 UF, plazo de 24 a 60 meses, opción de compra típica de 1% y cuotas deducibles como gasto para el Impuesto de Primera Categoría [Manual de Crédito, Art. 9].
 
 ### 5. Próximos Pasos y Documentación Requerida
-1. Descarga y emisión de la **Carpeta Tributaria Electrónica para Solicitar Créditos** desde el portal del SII (últimos 24 F29 y 2 últimos balances F22).
-2. Certificado de Vigencia de la Sociedad y Personería de los Socios con antigüedad no superior a 60 días emitida por el Conservador de Bienes Raíces o Registro de Empresas y Sociedades.
-3. Balance general y estado de resultados firmado por el contador de la empresa para verificación de ratios en el Comité de Crédito.
+1. Carpeta Tributaria Electrónica para solicitar créditos (últimos 24 F29 y 2 últimos F22) [Catálogo de Productos, Sección 1]
+2. Certificado de Vigencia de Poderes con antigüedad menor a 60 días [Catálogo de Productos, Sección 1]
+3. Cotización o factura proforma del bien a financiar.
 
-[Herramientas Ejecutadas]: [{'tool': 'ClientLookupTool', 'action': 'find_by_rut', 'target': '76.123.456-K', 'status': 'SUCCESS', 'data': 'Cliente identificado: Transportes y Logistica Biobio SpA'}, {'tool': 'EconomicIndicatorsTool', 'action': 'get_indicators', 'status': 'SUCCESS', 'data': 'UF: $41,008.10 CLP | Dólar: $959.39 CLP'}]
-[Tiempo de Ejecución]: 0.214 segundos
+[Modo de generación]: Motor de síntesis local (reglas)
+[Herramientas ejecutadas]: ['ClientLookupTool:find_by_rut', 'EconomicIndicatorsTool:get_indicators', 'VectorStore:multi_query_search']
+[Fragmentos recuperados]: ['Artículo 5 (0.40)', 'Artículo 9 (0.35)', 'Sección 2 (0.34)', 'Artículo 1 (0.33)', 'Artículo 3 (0.28)', 'Artículo 4 (0.28)', 'Sección 1 (0.27)', 'Artículo 7 (0.27)', 'Artículo 6 (0.24)', 'Artículo 8 (0.09)']
+[Validación de citas]: {'cited': ['Art. 1', 'Art. 3', 'Art. 4', 'Art. 5', 'Art. 6', 'Art. 7', 'Art. 9', 'Sección 1', 'Sección 2'], 'supported': ['Art. 1', 'Art. 3', 'Art. 4', 'Art. 5', 'Art. 6', 'Art. 7', 'Art. 9', 'Sección 1', 'Sección 2'], 'unsupported': [], 'grounded_ratio': 1.0}
+[Tiempo de ejecución]: 0.235 segundos
 
 ======================================================================
 QUERY: Hola, soy de Panaderia El Trigal (RUT 76.999.888-4) y necesitamos un crédito de 800 UF para capital de trabajo.
 ======================================================================
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
 ### 1. Resumen de la Solicitud y Dictamen Preliminar
-- **Empresa / Razón Social:** Panaderia y Alimentos El Trigal EIRL
-- **RUT Institucional:** 76.999.888-4
-- **Monto Solicitado:** 800.00 UF (Equivalente exacto a **$32,806,480 CLP** según valor de la UF al día de $41,008.10 CLP [Fuente: API mindicador.cl / Banco Central de Chile])
-- **Estado de Admisibilidad:** **NO ADMISIBLE (BLOQUEO POR MOROSIDAD COMERCIAL)**
-- **Dictamen:** La empresa registra morosidades por $1,250,000 CLP en el Boletín Comercial, superando el límite máximo permitido de $500.000 CLP [Manual de Crédito, Art. 4].
+- **Empresa / RUT:** Panaderia y Alimentos El Trigal EIRL (76.999.888-4)
+- **Monto Solicitado:** 800,00 UF, equivalente a **$32.813.024 CLP** con UF de $41.016,28 [Fuente: mindicador.cl (último valor en caché, 2026-09-25; API sin conexión)]
+- **Estado Preliminar:** **NO ADMISIBLE**
+- **Fundamento:** Morosidad de $1.250.000 CLP supera el máximo de $500.000. [Manual de Crédito, Art. 4]
 
 ### 2. Análisis y Fundamentación Normativa (Políticas RAG)
-- **Antigüedad Operacional:** Registra 28 meses de facturación continua en Primera Categoría ante el SII, dando estricto cumplimiento al mínimo de 12 meses [Manual de Crédito, Art. 3].
-- **Comportamiento Comercial:** Se constata morosidad comercial que excede el marco de aprobación directa [Manual de Crédito, Art. 4].
-- **Ratio de Endeudamiento (Leverage):** Nivel de apalancamiento: 2.1x. Se evalúa conforme a los límites de prudencia financiera [Manual de Crédito, Art. 5].
+- **Segmento PYME** — CUMPLE: Ventas anuales de 2.400 UF dentro del rango 800–100.000 UF. [Manual de Crédito, Art. 1]
+- **Antigüedad** — CUMPLE: 28 meses de actividad (mínimo 12). [Manual de Crédito, Art. 3]
+- **Morosidad DICOM** — NO CUMPLE: Morosidad de $1.250.000 CLP supera el máximo de $500.000. [Manual de Crédito, Art. 4]
+- **Leverage** — CUMPLE: Leverage 2,10x dentro del límite de 2,5x para el rubro. [Manual de Crédito, Art. 5]
+- **Cobertura de deuda (DSCR)** — CUMPLE: DSCR 1,28 (mínimo 1,25). [Manual de Crédito, Art. 5]
 
 ### 3. Estructura de Garantías y Cobertura Estatal
-- **Garantía Estatal FOGAPE:** La empresa se ubica en el tramo de ventas de hasta 25.000 UF anuales, accediendo a una garantía estatal **FOGAPE de hasta el 85% del capital insoluto** [Manual de Crédito, Art. 6].
-- **Garantías Reales Adicionales:** El monto solicitado no supera las 3.000 UF, por lo que no se exige hipoteca comercial, bastando el aval de los socios y la garantía FOGAPE [Manual de Crédito, Art. 7].
+- **Garantía FOGAPE:** No corresponde evaluar la garantía FOGAPE mientras no se subsanen los incumplimientos indicados [Manual de Crédito, Art. 6].
+- **Garantías reales:** Monto no supera 3.000 UF: no se exige garantía hipotecaria general [Manual de Crédito, Art. 7].
 
 ### 4. Producto Financiero Recomendado
-- **Línea de Financiamiento:** **Crédito Comercial para Capital de Trabajo PYME** [Catálogo de Productos, Sección 1]
-- **Fundamentación Técnica:** Plazo de amortización entre 6 y 36 meses para adquisición de materias primas o descalces de caja, con hasta 6 meses de gracia para capital [Manual de Crédito, Art. 8].
+- **Producto:** **Crédito Comercial para Capital de Trabajo PYME** [Catálogo de Productos, Sección 1]
+- **Condiciones:** Monto mínimo 150 UF, hasta 3 meses de venta promedio (tope 5.000 UF sin garantía hipotecaria o 15.000 UF con garantía real o FOGAPE), plazo de 6 a 36 meses y hasta 6 meses de gracia de capital [Manual de Crédito, Art. 8].
 
 ### 5. Próximos Pasos y Documentación Requerida
-1. Descarga y emisión de la **Carpeta Tributaria Electrónica para Solicitar Créditos** desde el portal del SII (últimos 24 F29 y 2 últimos balances F22).
-2. Certificado de Vigencia de la Sociedad y Personería de los Socios con antigüedad no superior a 60 días emitida por el Conservador de Bienes Raíces o Registro de Empresas y Sociedades.
-3. Balance general y estado de resultados firmado por el contador de la empresa para verificación de ratios en el Comité de Crédito.
+1. Carpeta Tributaria Electrónica para solicitar créditos (últimos 24 F29 y 2 últimos F22) [Catálogo de Productos, Sección 1]
+2. Certificado de Vigencia de Poderes con antigüedad menor a 60 días [Catálogo de Productos, Sección 1]
+3. Comprobante de regularización o convenio de pago de las morosidades informadas [Manual de Crédito, Art. 4].
 
-[Herramientas Ejecutadas]: [{'tool': 'ClientLookupTool', 'action': 'find_by_rut', 'target': '76.999.888-4', 'status': 'SUCCESS', 'data': 'Cliente identificado: Panaderia y Alimentos El Trigal EIRL'}, {'tool': 'EconomicIndicatorsTool', 'action': 'get_indicators', 'status': 'SUCCESS', 'data': 'UF: $41,008.10 CLP | Dólar: $959.39 CLP'}]
-[Tiempo de Ejecución]: 0.18 segundos
+[Modo de generación]: Motor de síntesis local (reglas)
+[Herramientas ejecutadas]: ['ClientLookupTool:find_by_rut', 'EconomicIndicatorsTool:get_indicators', 'VectorStore:multi_query_search']
+[Fragmentos recuperados]: ['Artículo 11 (0.63)', 'Artículo 5 (0.40)', 'Artículo 8 (0.36)', 'Artículo 1 (0.33)', 'Artículo 3 (0.28)', 'Artículo 4 (0.28)', 'Sección 1 (0.27)', 'Artículo 7 (0.27)', 'Sección 1 (0.26)', 'Sección 1 (0.26)', 'Artículo 6 (0.24)']
+[Validación de citas]: {'cited': ['Art. 1', 'Art. 3', 'Art. 4', 'Art. 5', 'Art. 6', 'Art. 7', 'Art. 8', 'Sección 1'], 'supported': ['Art. 1', 'Art. 3', 'Art. 4', 'Art. 5', 'Art. 6', 'Art. 7', 'Art. 8', 'Sección 1'], 'unsupported': [], 'grounded_ratio': 1.0}
+[Tiempo de ejecución]: 0.006 segundos
 
 ======================================================================
 QUERY: Consulta general: ¿Cuáles son las condiciones para acceder a la garantía FOGAPE y qué porcentaje de cobertura tiene?
 ======================================================================
-[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
 ### 1. Resumen de la Solicitud y Dictamen Preliminar
-- **Empresa / Razón Social:** Cliente No Registrado
-- **RUT Institucional:** No especificado
-- **Monto Solicitado:** 1,000.00 UF (Equivalente exacto a **$41,008,100 CLP** según valor de la UF al día de $41,008.10 CLP [Fuente: API mindicador.cl / Banco Central de Chile])
-- **Estado de Admisibilidad:** INFORMACIÓN PRELIMINAR / REQUERIMIENTO GENERAL
-- **Dictamen:** Se entrega asesoría con base en las políticas generales del banco a la espera de antecedentes tributarios de la empresa.
+- **Empresa / RUT:** Consulta sin cliente identificado (No informado)
+- **Monto Solicitado:** No indicado (UF de referencia del día: $41.016,28 CLP [Fuente: mindicador.cl (último valor en caché, 2026-09-25; API sin conexión)])
+- **Estado Preliminar:** **INFORMACIÓN GENERAL**
+- **Fundamento:** Se entrega información general del manual; para una pre-evaluación se requiere el RUT de la empresa.
 
 ### 2. Análisis y Fundamentación Normativa (Políticas RAG)
-- **Antigüedad Operacional:** Debe acreditar un mínimo de 12 meses continuos de declaraciones de IVA F29 ante el SII [Manual de Crédito, Art. 3].
-- **Comportamiento Comercial:** Se constata morosidad comercial que excede el marco de aprobación directa [Manual de Crédito, Art. 4].
-- **Ratio de Endeudamiento (Leverage):** El ratio de deuda total a patrimonio neto no debe superar 2.5x (o 3.2x en transporte/manufactura) [Manual de Crédito, Art. 5].
+- **Antigüedad:** mínimo 12 meses de actividad en Primera Categoría; entre 6 y 12 meses sólo vía Leasing con pie de 25% [Manual de Crédito, Art. 3].
+- **Morosidad:** sin morosidades vigentes superiores a $500.000 CLP en el Boletín Comercial [Manual de Crédito, Art. 4].
+- **Endeudamiento:** leverage máximo 2.5x (3.2x en transporte o manufactura) y DSCR mínimo 1.25 [Manual de Crédito, Art. 5].
 
 ### 3. Estructura de Garantías y Cobertura Estatal
-- **Garantía Estatal FOGAPE:** La empresa se ubica en el tramo de ventas de hasta 25.000 UF anuales, accediendo a una garantía estatal **FOGAPE de hasta el 85% del capital insoluto** [Manual de Crédito, Art. 6].
-- **Garantías Reales Adicionales:** El monto solicitado no supera las 3.000 UF, por lo que no se exige hipoteca comercial, bastando el aval de los socios y la garantía FOGAPE [Manual de Crédito, Art. 7].
+- **Garantía FOGAPE:** Ventas hasta 25.000 UF: cobertura de hasta 85% del capital insoluto; entre 25.001 y 100.000 UF: hasta 70%. Sólo para capital de trabajo e inversión productiva [Manual de Crédito, Art. 6].
+- **Garantías reales:** Sobre 3.000 UF en capital de trabajo o inversión se exige garantía hipotecaria (cobertura 120%) [Manual de Crédito, Art. 7].
 
 ### 4. Producto Financiero Recomendado
-- **Línea de Financiamiento:** **Crédito Comercial para Capital de Trabajo PYME** [Catálogo de Productos, Sección 1]
-- **Fundamentación Técnica:** Plazo de amortización entre 6 y 36 meses para adquisición de materias primas o descalces de caja, con hasta 6 meses de gracia para capital [Manual de Crédito, Art. 8].
+- **Producto:** **Crédito Comercial para Capital de Trabajo PYME** [Catálogo de Productos, Sección 1]
+- **Condiciones:** Monto mínimo 150 UF, hasta 3 meses de venta promedio (tope 5.000 UF sin garantía hipotecaria o 15.000 UF con garantía real o FOGAPE), plazo de 6 a 36 meses y hasta 6 meses de gracia de capital [Manual de Crédito, Art. 8].
 
 ### 5. Próximos Pasos y Documentación Requerida
-1. Descarga y emisión de la **Carpeta Tributaria Electrónica para Solicitar Créditos** desde el portal del SII (últimos 24 F29 y 2 últimos balances F22).
-2. Certificado de Vigencia de la Sociedad y Personería de los Socios con antigüedad no superior a 60 días emitida por el Conservador de Bienes Raíces o Registro de Empresas y Sociedades.
-3. Balance general y estado de resultados firmado por el contador de la empresa para verificación de ratios en el Comité de Crédito.
+1. Carpeta Tributaria Electrónica para solicitar créditos (últimos 24 F29 y 2 últimos F22) [Catálogo de Productos, Sección 1]
+2. Certificado de Vigencia de Poderes con antigüedad menor a 60 días [Catálogo de Productos, Sección 1]
 
-[Herramientas Ejecutadas]: [{'tool': 'EconomicIndicatorsTool', 'action': 'get_indicators', 'status': 'SUCCESS', 'data': 'UF: $41,008.10 CLP | Dólar: $959.39 CLP'}]
-[Tiempo de Ejecución]: 0.092 segundos
+[Modo de generación]: Motor de síntesis local (reglas)
+[Herramientas ejecutadas]: ['EconomicIndicatorsTool:get_indicators', 'VectorStore:multi_query_search']
+[Fragmentos recuperados]: ['Artículo 5 (0.40)', 'Artículo 8 (0.36)', 'Artículo 3 (0.28)', 'Artículo 4 (0.28)', 'Sección 1 (0.27)', 'Artículo 7 (0.27)', 'Artículo 6 (0.24)', 'Sección 1 (0.22)', 'Artículo 10 (0.10)']
+[Validación de citas]: {'cited': ['Art. 3', 'Art. 4', 'Art. 5', 'Art. 6', 'Art. 7', 'Art. 8', 'Sección 1'], 'supported': ['Art. 3', 'Art. 4', 'Art. 5', 'Art. 6', 'Art. 7', 'Art. 8', 'Sección 1'], 'unsupported': [], 'grounded_ratio': 1.0}
+[Tiempo de ejecución]: 0.005 segundos

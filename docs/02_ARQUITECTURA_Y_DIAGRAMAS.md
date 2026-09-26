@@ -1,139 +1,138 @@
-# ARQUITECTURA DE LA SOLUCIÓN TÉCNICA (IE4, IE7)
-## Sistema Agéntico RAG: "PYME-Advisor" para BancoEstado Microempresas
-**Asignatura:** ISY0101 - Ingeniería de Soluciones con IA | Duoc UC  
-**Integrantes:** Juan Serna, Bárbara Bustamante, Nelson Carrasco  
-**Fecha:** Septiembre 2026  
+# Arquitectura de la solución (IE4, IE7)
+## PYME-Advisor – Agente con LLM y RAG para BancoEstado Microempresas
+**Asignatura:** ISY0101 – Ingeniería de Soluciones con IA | Duoc UC
+**Integrantes:** Juan Serna, Bárbara Bustamante, Nelson Carrasco
+**Fecha:** septiembre de 2026
 
 ---
 
-### 1. Descripción General de la Arquitectura
+### 1. Visión general
 
-La arquitectura de la solución **PYME-Advisor** ha sido concebida bajo el paradigma de **Agente Aumentado con Herramientas y Recuperación (ReAct / Tool-Augmented RAG)**. El sistema desacopla eficientemente cuatro capas funcionales:
-1. **Capa de Ingesta y Recuperación Interna (Internal RAG):** Almacenamiento vectorial e indexación semántica jerárquica de la normativa bancaria interna.
-2. **Capa de Integración Externa en Tiempo Real (External Tools):** Consumo dinámico de la API oficial de indicadores económicos de Chile (mindicador.cl / CMF) y la base de clientes.
-3. **Capa de Orquestación y Procesamiento Agéntico (Agent Core):** Extracción de entidades, control de memoria de sesión, enrutamiento semántico y aplicación de guardrails.
-4. **Capa de Generación y Explicabilidad (Generation & Guardrails):** Formulación de dictámenes financieros trazables, con citación obligatoria y consistencia matemática.
+La solución sigue el patrón de **agente aumentado con herramientas y recuperación** (ReAct / tool-augmented RAG; Yao et al., 2023; Lewis et al., 2020) y se organiza en cuatro capas:
+
+1. **Interfaz:** CLI (`app.py`) y dashboard web FastAPI (`web_server.py`) con panel de auditoría.
+2. **Orquestación agéntica:** `agent_core.py` coordina extracción de entidades, herramientas, motor de reglas (`policy_engine.py`), recuperación, generación y verificación; `context_manager.py` mantiene la memoria de sesión.
+3. **Recuperación y herramientas:** índice TF-IDF sobre el Manual de Crédito y el Catálogo (27 fragmentos por artículo/sección), base interna de clientes por RUT y API pública mindicador.cl (UF, dólar, UTM) con caché y respaldo.
+4. **Generación y evaluación:** gpt-4o-mini (si existe `OPENAI_API_KEY`) o motor de síntesis local; guardrail de salida que verifica citas y estado; evaluador de coherencia (`evaluate_coherence.py`).
 
 ---
 
-### 2. Diagrama de Arquitectura Global del Sistema (IE7)
+### 2. Diagrama de arquitectura
+
+![Arquitectura](diagramas/arquitectura.png)
 
 ```mermaid
-flowchart TD
-    subgraph UI ["CAPA DE INTERFAZ DE USUARIO"]
-        User["Ejecutivo / Cliente PYME"]
-        CLI["Consola Interactiva (CLI)\n[app.py]"]
-        WebUI["Dashboard Web FastAPI\n[web_server.py]"]
+flowchart TB
+    U(["Ejecutivo / Cliente PYME"])
+    subgraph L1["1 · Capa de interfaz"]
+        direction LR
+        CLI["CLI · app.py"]
+        WEB["Dashboard FastAPI · web_server.py"]
     end
-
-    subgraph AgentCore ["CAPA DE ORQUESTACIÓN AGÉNTICA (Agent Core)"]
-        Router["Orquestador Agéntico\n[agent_core.py]"]
-        EntityExt["Extractor de Entidades\n(RUT, Monto en UF/CLP, Producto)"]
-        ContextMgr["Gestor de Memoria y Contexto\n[context_manager.py]"]
-        PromptEng["Módulo de Prompt Engineering\n(System Prompt + Few-Shot + Guardrails)\n[prompts.py]"]
+    subgraph L2["2 · Capa de orquestación agéntica"]
+        direction LR
+        ENT["Extracción de entidades<br/>RUT · monto UF/CLP"]
+        AG["PymeAdvisorAgent<br/>agent_core.py"]
+        CTX["Memoria de sesión<br/>context_manager.py (5 turnos)"]
+        POL["Motor de reglas del manual<br/>policy_engine.py<br/>(Art. 1, 3, 4, 5, 11)"]
     end
-
-    subgraph ExternalSources ["CAPA DE HERRAMIENTAS Y DATOS EXTERNOS"]
-        ExtAPI["API Oficial Indicadores\n(mindicador.cl / CMF)\n[economic_indicators.py]"]
-        CacheDisc["Caché Local de Resiliencia\n[indicators_cache.json]"]
-        ClientDB["Base de Datos Clientes PYME\n(RUT, Balance, Dicom, FOGAPE)\n[client_lookup.py]"]
+    subgraph L3["3 · Capa de recuperación y herramientas"]
+        direction LR
+        subgraph RAG["RAG interno"]
+            direction TB
+            DOCS[("Manual de Crédito + Catálogo<br/>(documentos simulados)")] --> CH["Chunker por artículo<br/>27 fragmentos"] --> VS["Índice TF-IDF 1-3 gramas + coseno<br/>búsqueda multi-consulta"]
+        end
+        subgraph EXT["Herramientas (tool calling)"]
+            direction TB
+            API["EconomicIndicatorsTool<br/>API mindicador.cl (UF · USD · UTM)"] -.-> CACHE[("Caché TTL 1 h<br/>+ contingencia")]
+            CLDB[("ClientLookupTool<br/>base clientes por RUT")]
+        end
     end
-
-    subgraph InternalRAG ["CAPA DE RECUPERACIÓN INTERNA (RAG Pipeline)"]
-        RawDocs["Documentación Normativa Interna\n(Manual de Crédito 2026, Catálogo Productos)"]
-        SemanticChunk["Segmentador Jerárquico\n(Chunking por Artículos)\n[chunker.py]"]
-        VectorStore["Almacén Vectorial Semántico\n(TF-IDF N-Grams + Cosine Similarity)\n[vector_store.py]"]
+    subgraph L4["4 · Capa de generación y evaluación"]
+        direction LR
+        PR["Prompt ensamblado<br/>System + Few-shot + Guardrails<br/>+ contexto RAG + perfil + UF"]
+        LLM["LLM gpt-4o-mini (temp 0.1)<br/>si hay OPENAI_API_KEY"]
+        LOC["Motor de síntesis local<br/>por reglas (fallback)"]
+        GR["Guardrail de salida<br/>verificación de citas<br/>+ estado vs motor de reglas"]
+        OUT["Dictamen de 5 secciones<br/>con citas [Manual, Art. X]"]
+        EVAL["Evaluador de coherencia<br/>evaluate_coherence.py"]
+        PR --> LLM --> GR
+        PR --> LOC --> GR
+        GR --> OUT --> EVAL
     end
-
-    subgraph OutputLayer ["CAPA DE GENERACIÓN Y EVALUACIÓN"]
-        LLMEngine["Motor de Inferencia\n(LLM gpt-4o-mini / Grounded Engine)"]
-        Auditor["Evaluador de Coherencia RAG\n(RAG Triad, Fidelidad, Citas, Math)\n[evaluate_coherence.py]"]
-        ReportOut["Dictamen Estructurado de 5 Puntos\n(Trazabilidad APA / CMF)"]
-    end
-
-    %% Flujos de Información
-    User -->|Consulta en Lenguaje Natural| CLI
-    User -->|Consulta en Lenguaje Natural| WebUI
-    CLI --> Router
-    WebUI --> Router
-
-    Router --> EntityExt
-    EntityExt --> ContextMgr
-    
-    Router -->|Invocación de Herramientas| ExtAPI
-    ExtAPI -.-> CacheDisc
-    Router -->|Búsqueda de Cliente por RUT| ClientDB
-
-    Router -->|Búsqueda Semántica Vectorial| VectorStore
-    RawDocs --> SemanticChunk --> VectorStore
-
-    ContextMgr --> PromptEng
-    VectorStore -->|Contexto Normativo Top-K| PromptEng
-    ExtAPI -->|UF / Dólar del Día| PromptEng
-    ClientDB -->|Perfil de Riesgo| PromptEng
-
-    PromptEng --> LLMEngine
-    LLMEngine --> ReportOut
-    ReportOut --> Auditor
-    ReportOut -->|Visualización Inmediata| CLI
-    ReportOut -->|Visualización Inmediata| WebUI
+    U --> CLI & WEB
+    CLI & WEB --> AG
+    AG --- ENT
+    AG --- CTX
+    AG --- POL
+    POL --> PR
+    AG --> VS
+    AG --> API
+    AG --> CLDB
+    VS --> PR
+    API --> PR
+    CLDB --> PR
 ```
 
 ---
 
-### 3. Diagrama de Secuencia: Flujo de Consulta y Evaluación Crediticia
+### 3. Flujo de una consulta (secuencia)
 
-El siguiente diagrama detalla la interacción paso a paso entre los componentes del sistema ante la solicitud de una PYME:
+![Flujo RAG](diagramas/flujo_rag.png)
 
 ```mermaid
 sequenceDiagram
     autonumber
-    actor Ejecutivo as Ejecutivo / Cliente PYME
-    participant Web as Dashboard Web (FastAPI)
-    participant Agent as Agente PYME-Advisor
-    participant Tools as Herramientas Externas (API UF/CMF)
-    participant ClientDB as Base de Clientes (RUT)
-    participant RAG as Vector Store (Políticas)
-    participant Engine as Motor de Generación (Guardrails)
-
-    Ejecutivo->>Web: Envía solicitud ("Queremos 1.500 UF para camión, RUT 76.123.456-K")
-    Web->>Agent: process_query(texto)
-    
-    rect rgb(240, 248, 255)
-        Note over Agent,Tools: Paso 1: Ejecución de Herramientas Externas
-        Agent->>Tools: get_indicators()
-        Tools-->>Agent: UF actual = $41.008,10 CLP (mindicador.cl)
-        Agent->>ClientDB: find_by_rut("76.123.456-K")
-        ClientDB-->>Agent: Transportes Biobío SpA (Antigüedad: 36 meses, DICOM: $0, Leverage: 1.8)
-    end
-
-    rect rgb(245, 255, 245)
-        Note over Agent,RAG: Paso 2: Recuperación Aumentada RAG
-        Agent->>RAG: search("Transporte camión 1.500 UF leasing garantías FOGAPE")
-        RAG-->>Agent: Retorna Art. 3 (Antigüedad), Art. 6 (FOGAPE 85%), Art. 7 (Prenda Leasing)
-    end
-
-    rect rgb(255, 250, 240)
-        Note over Agent,Engine: Paso 3: Ensamble de Prompt y Razonamiento
-        Agent->>Engine: Prompt con Contexto RAG + UF en vivo + Perfil Financiero
-        Engine->>Engine: Computa: 1.500 UF * $41.008,10 = $61.512.150 CLP
-        Engine->>Engine: Evalúa: Leverage 1.8x < 3.2x -> PRE-ADMISIBLE
-        Engine-->>Agent: Dictamen Estructurado de 5 Puntos con Citas Textuales
-    end
-
-    Agent->>Web: Retorna respuesta con metadatos de auditoría y tiempo (0.002s)
-    Web-->>Ejecutivo: Muestra pre-calificación, producto Leasing y desglose en CLP
+    actor E as Ejecutivo
+    participant A as Agente (agent_core)
+    participant C as ClientLookupTool
+    participant I as EconomicIndicatorsTool
+    participant R as Motor de reglas
+    participant V as Vector Store (RAG)
+    participant G as LLM / Motor local
+    E->>A: Consulta en lenguaje natural (RUT, monto, destino)
+    A->>A: Extrae RUT y monto (regex)
+    A->>C: find_by_rut(RUT)
+    C-->>A: Perfil (antigüedad, DICOM, leverage, DSCR, ventas UF)
+    A->>I: get_indicators()
+    I-->>A: UF, Dólar, UTM (API en vivo, caché o respaldo)
+    A->>R: evaluate_policies(perfil, monto UF, producto)
+    R-->>A: Estado preliminar + verificación por artículo
+    A->>V: 9 sub-consultas por dimensión + consulta original
+    V-->>A: Fragmentos del Manual/Catálogo (sin duplicados, con score)
+    A->>G: Prompt: reglas + contexto RAG + perfil + UF + memoria
+    G-->>A: Dictamen de 5 secciones con citas
+    A->>A: Guardrail: cada cita respaldada por un fragmento recuperado
+    A-->>E: Respuesta + fuentes + herramientas + validación
 ```
+
+**Ejemplo (Caso 1, Transportes Biobío, 1.500 UF para un camión):**
+1. Se extraen el RUT 76.123.456-K y el monto de 1.500 UF.
+2. `ClientLookupTool` entrega: 36 meses, DICOM $0, leverage 1,8x, DSCR 1,45 y ventas de 8.500 UF.
+3. `EconomicIndicatorsTool` entrega la UF del día y el monto se convierte a CLP (1.500 × UF).
+4. El motor de reglas verifica los Art. 1, 3, 4 y 5 (límite de leverage de 3,2x para transporte) → **PRE-ADMISIBLE**; el producto detectado es **Leasing**.
+5. La búsqueda multi-consulta recupera, entre otros, los Art. 3, 4, 5, 6, 7 y 9 y las Secciones 1 y 2 del catálogo.
+6. El dictamen cita sólo esos artículos; el guardrail confirma que las 9 citas tienen respaldo.
 
 ---
 
-### 4. Justificación Técnica de los Componentes Arquitectónicos (IE4, IE8)
+### 4. Componentes y decisiones de diseño (IE4, IE8)
 
-| Componente | Tecnología Seleccionada | Justificación Técnica y Beneficio Organizacional |
+| Componente | Implementación | Justificación |
 | :--- | :--- | :--- |
-| **Segmentador Semántico (Chunking)** | Hierarchical & Semantic Heading Splitter | A diferencia de un splitter por número ciego de caracteres (que cortaría cláusulas legales por la mitad), este segmentador agrupa los fragmentos respetando los títulos (`##`) y artículos (`Art. X`), conservando la unidad conceptual de la regla de crédito. |
-| **Almacén Vectorial (Vector Store)** | Sparse Vectorizer N-Grams (1-3) & Cosine Distance | Proporciona búsqueda léxico-semántica determinista de latencia ultrabaja (<2 milisegundos), garantizando que términos técnicos exactos (como "FOGAPE", "DICOM", "Leverage") tengan coincidencia perfecta sin falsos positivos semánticos. |
-| **Integración Externa (External Tools)** | REST API `mindicador.cl` + Caché TTL | Resuelve la principal limitación de los LLMs: el desfase temporal y la incapacidad de calcular montos actualizados. Permite indexar contratos en UF del día hábil con fallback local ante caídas del enlace. |
-| **Control de Contexto (Context Manager)** | Stateful Sliding Window Buffer | Mantiene el perfil de la PYME identificada durante la sesión para consultas sucesivas, descartando turnos antiguos para prevenir saturación de ventana y alucinaciones por ruido contextual. |
-| **Guardrails de Inferencia** | Strict Role Prompting + Grounded Synthesizer | Implementa el principio de "defensa en profundidad": el agente tiene vetado emitir aprobaciones finales y rechaza inventar condiciones, citando obligatoriamente el artículo de soporte normativo. |
-| **Métricas de Evaluación (Coherencia)** | Framework RAG Triad (Faithfulness, Recall, Math) | Permite auditar cuantitativamente el 100% de los dictámenes emitidos, demostrando solidez técnica y mitigando el riesgo regulatorio ante la CMF. |
+| Segmentación | Por encabezado Markdown y artículo (`chunker.py`) | Una regla y su excepción quedan en el mismo fragmento y la cita al artículo es inequívoca. |
+| Índice vectorial | TF-IDF sublineal, n-gramas 1–3, coseno (`vector_store.py`) | Corpus pequeño con terminología exacta (DICOM, FOGAPE, UF); determinista, sin costo ni dependencias externas. Con un corpus mayor se migraría a embeddings densos. |
+| Recuperación multi-consulta | Sub-consultas por dimensión de riesgo (`agent_core._retrieve`) | Una solicitud involucra varias reglas; medido en la batería: recall de recuperación de 17,1% (sólo la consulta original, top-3) a 100%. |
+| Motor de reglas | `policy_engine.py` (Art. 1, 3, 4, 5 y 11) | La decisión crediticia debe ser reproducible y auditable; el LLM explica, no decide. |
+| Herramienta externa | API mindicador.cl + caché de 1 h + último valor real + contingencia | Resuelve el desfase temporal del LLM sin inventar valores si la API falla, e informa siempre la fuente usada. |
+| Memoria | Ventana de 5 turnos y cliente activo (`context_manager.py`) | Permite preguntas de seguimiento ("¿y qué documentos necesito?") sin saturar el prompt. |
+| Prompt | Rol, reglas negativas, citas obligatorias, few-shot, estado impuesto por el motor, temperatura 0,1 (`prompts.py`) | Reduce el espacio de respuesta a lo que el contexto respalda y estabiliza el formato de 5 secciones. |
+| Guardrail de salida | `validate_citations` y control de estado | Toda cita sin fragmento de respaldo se marca y se advierte al ejecutivo; si el LLM contradice al motor de reglas, prevalece el motor. |
+| Evaluación | `evaluate_coherence.py` (7 casos) | Mide precisión de dictamen, recall de recuperación y de citas, groundedness de citas y consistencia UF→CLP. |
+
+---
+
+### 5. Referencias
+
+- Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., Küttler, H., Lewis, M., Yih, W., Rocktäschel, T., Riedel, S., & Kiela, D. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. *Advances in Neural Information Processing Systems, 33*, 9459–9474.
+- Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2023). ReAct: Synergizing reasoning and acting in language models. *International Conference on Learning Representations (ICLR 2023)*.

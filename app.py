@@ -19,7 +19,7 @@ def print_banner():
    Integrantes: Juan Serna, Bárbara Bustamante, Nelson Carrasco
 ================================================================================
   * RAG Interno: Manual de Crédito 2026 + Catálogo de Productos
-  * Integración Externa: API Oficial mindicador.cl (UF, Dólar, UTM en vivo)
+  * Integración Externa: API pública mindicador.cl (UF, Dólar, UTM)
   * Control de Contexto: Historial de sesión y verificación de reglas duras
 ================================================================================
 """)
@@ -32,7 +32,7 @@ Seleccione una opción:
   [3] Consulta Rápida: Constructora del Sur (4.000 UF - Derivación a Comité Art. 11)
   [4] Consulta Rápida: Consulta Normativa abierta sobre subsidios FOGAPE
   [5] Escribir una consulta personalizada en lenguaje natural
-  [6] Ejecutar Batería de Pruebas de Coherencia RAG (Métricas IE6)
+  [6] Ejecutar Batería de Pruebas de Coherencia RAG (7 casos, Métricas IE6)
   [7] Salir
 """)
 
@@ -42,7 +42,7 @@ def run_cli():
     econ_tool = EconomicIndicatorsTool()
     ind = econ_tool.get_indicators()
 
-    print(f"-> Conexión a API Externa establecida con éxito:")
+    print(f"-> Indicadores económicos ({ind.get('fuente', 'mindicador.cl')}):")
     print(f"   UF: ${ind['uf']['valor']:,.2f} CLP | Dólar: ${ind['dolar']['valor']:,.2f} CLP | UTM: ${ind['utm']['valor']:,.2f} CLP\n")
 
     while True:
@@ -70,7 +70,9 @@ def run_cli():
             print("RESULTADOS DE EVALUACIÓN DE COHERENCIA Y FIDELIDAD (IE6)")
             print("="*60)
             print(f"Precisión de Dictamen:            {summary['overall_status_accuracy']}")
-            print(f"Score Promedio de Groundedness:    {summary['average_groundedness_score']}")
+            print(f"Recall de Recuperación:            {summary['context_recall']} (línea base {summary['baseline_context_recall']})")
+            print(f"Recall de Citas Esperadas:         {summary['citation_recall']}")
+            print(f"Groundedness de Citas:             {summary['average_groundedness_score']}")
             print(f"Consistencia Matemática (UF/CLP): {summary['math_consistency_rate']}")
             print(f"Latencia Media de Inferencia:      {summary['average_latency_seconds']}")
             continue
@@ -95,7 +97,10 @@ def run_cli():
         print(f"-> Fuentes RAG Recuperadas:")
         for s in result["retrieved_sources"]:
             print(f"   * [{s['article']}] {s['heading']} (Relevancia: {s['similarity']*100:.1f}%)")
-        print(f"-> Herramientas Ejecutadas: {len(result['tools_executed'])}")
+        print(f"-> Herramientas Ejecutadas: {', '.join(t['tool'] for t in result['tools_executed'])}")
+        print(f"-> Modo de Generación: {result['generation_mode']}")
+        v = result["citation_validation"]
+        print(f"-> Guardrail de Citas: {len(v['supported'])}/{len(v['cited'])} citas respaldadas por fragmentos recuperados")
         print(f"-> Tiempo de Ejecución: {result['execution_time_seconds']}s")
         print("."*70 + "\n")
 

@@ -10,12 +10,13 @@ flowchart TB
         ENT["Extracción de entidades<br/>RUT · monto UF/CLP"]
         AG["PymeAdvisorAgent<br/>agent_core.py"]
         CTX["Memoria de sesión<br/>context_manager.py (5 turnos)"]
+        POL["Motor de reglas del manual<br/>policy_engine.py<br/>(Art. 1, 3, 4, 5, 11)"]
     end
     subgraph L3["3 · Capa de recuperación y herramientas"]
         direction LR
         subgraph RAG["RAG interno"]
             direction TB
-            DOCS[("Manual de Crédito + Catálogo<br/>(documentos simulados)")] --> CH["Chunker jerárquico por artículo"] --> VS["Índice TF-IDF 1-3 gramas<br/>+ similitud coseno · top-k 3"]
+            DOCS[("Manual de Crédito + Catálogo<br/>(documentos simulados)")] --> CH["Chunker por artículo<br/>27 fragmentos"] --> VS["Índice TF-IDF 1-3 gramas + coseno<br/>búsqueda multi-consulta"]
         end
         subgraph EXT["Herramientas (tool calling)"]
             direction TB
@@ -28,16 +29,19 @@ flowchart TB
         PR["Prompt ensamblado<br/>System + Few-shot + Guardrails<br/>+ contexto RAG + perfil + UF"]
         LLM["LLM gpt-4o-mini (temp 0.1)<br/>si hay OPENAI_API_KEY"]
         LOC["Motor de síntesis local<br/>por reglas (fallback)"]
+        GR["Guardrail de salida<br/>verificación de citas<br/>+ estado vs motor de reglas"]
         OUT["Dictamen de 5 secciones<br/>con citas [Manual, Art. X]"]
         EVAL["Evaluador de coherencia<br/>evaluate_coherence.py"]
-        PR --> LLM --> OUT
-        PR --> LOC --> OUT
-        OUT --> EVAL
+        PR --> LLM --> GR
+        PR --> LOC --> GR
+        GR --> OUT --> EVAL
     end
     U --> CLI & WEB
     CLI & WEB --> AG
     AG --- ENT
     AG --- CTX
+    AG --- POL
+    POL --> PR
     AG --> VS
     AG --> API
     AG --> CLDB

@@ -26,8 +26,10 @@ DIRECTRICES Y GUARDRAILS DE COMPORTAMIENTO
 4. CONTROL DE PRE-ADMISIBILIDAD:
    - Clasifica la solicitud en uno de los tres estados normativos:
      * A) PRE-ADMISIBLE: Cumple todos los requisitos generales y de producto.
-     * B) NO ADMISIBLE: Incumple reglas duras (antigüedad < 12 meses sin excepción de leasing, o morosidad DICOM > $500.000).
-     * C) DERIVACIÓN A COMITÉ ESPECIAL: Cumple requisitos pero tiene leverage > 2.5 (o 3.2 en transporte), montos > 10.000 UF o situaciones de riesgo contempladas en el Art. 11.
+     * B) NO ADMISIBLE: Incumple reglas duras (antigüedad < 6 meses, o entre 6 y 12 meses sin ser Leasing; morosidad DICOM > $500.000; ventas fuera de 800–100.000 UF; leverage > 3.5).
+     * C) DERIVACIÓN A COMITÉ ESPECIAL: leverage sobre el límite del Art. 5 (2.5x, o 3.2x en transporte/manufactura) y hasta 3.5x, DSCR < 1.25, montos > 10.000 UF u otras situaciones del Art. 11.
+   - Recibirás el resultado del MOTOR DE REGLAS del banco. Tu estado preliminar DEBE coincidir con él; tu tarea es explicarlo con las citas correspondientes, no recalcularlo.
+   - Nunca emitas una aprobación definitiva: todo dictamen es preliminar.
 
 5. ESTRUCTURA DE RESPUESTA OBLIGATORIA:
    Debes entregar tu dictamen utilizando estrictamente el siguiente formato en Markdown:
@@ -35,7 +37,7 @@ DIRECTRICES Y GUARDRAILS DE COMPORTAMIENTO
    ### 1. Resumen de la Solicitud y Dictamen Preliminar
    - **Empresa / RUT:** [Razón social y RUT]
    - **Monto Solicitado:** [Monto en UF y su conversión exacta en CLP]
-   - **Estado Preliminar:** [PRE-ADMISIBLE / NO ADMISIBLE / DERIVACIÓN A COMITÉ ART. 11]
+   - **Estado Preliminar:** [PRE-ADMISIBLE / NO ADMISIBLE / DERIVACIÓN A COMITÉ ESPECIAL / INFORMACIÓN GENERAL]
 
    ### 2. Análisis y Fundamentación Normativa (Políticas RAG)
    - [Análisis punto por punto de antigüedad, morosidad comercial y leverage citando los artículos específicos]
@@ -90,7 +92,8 @@ RESPUESTA DEL AGENTE:
 3. Certificado de Vigencia de Poderes de la sociedad (antigüedad < 60 días).
 """
 
-def build_agent_prompt(user_query: str, retrieved_context: str, economic_data: dict, client_profile: dict = None) -> str:
+def build_agent_prompt(user_query: str, retrieved_context: str, economic_data: dict, client_profile: dict = None,
+                       policy_checks: str = "", history: str = "") -> str:
     """
     Construye el prompt completo ensamblando el contexto RAG, los datos de la API externa
     y la información del cliente interno.
@@ -104,6 +107,7 @@ def build_agent_prompt(user_query: str, retrieved_context: str, economic_data: d
             f"- Antigüedad: {client_profile.get('antiguedad_meses')} meses\n"
             f"- Ventas Anuales: {client_profile.get('ventas_anuales_uf'):,} UF\n"
             f"- Ratio Endeudamiento (Leverage): {client_profile.get('ratio_endeudamiento_leverage')}x\n"
+            f"- Cobertura del Servicio de la Deuda (DSCR): {client_profile.get('dscr_cobertura_deuda')}\n"
             f"- Morosidad DICOM: ${client_profile.get('morosidad_dicom_clp'):,} CLP\n"
             f"- Garantías Previas: {client_profile.get('tipo_garantia')}\n"
             f"- Score Histórico: {client_profile.get('comportamiento_historico')}"
@@ -115,7 +119,12 @@ def build_agent_prompt(user_query: str, retrieved_context: str, economic_data: d
     fecha_uf = economic_data.get("uf", {}).get("fecha", "Hoy")
     fuente_ext = economic_data.get("fuente", "API mindicador.cl / Banco Central")
 
-    prompt = f"""
+    prompt = f"""{FEW_SHOT_EXAMPLE_PROMPT}
+======================================================
+HISTORIAL RECIENTE DE LA CONVERSACIÓN (MEMORIA DE SESIÓN)
+======================================================
+{history or "Sin interacciones previas."}
+
 ======================================================
 INFORMACIÓN EXTERNA EN TIEMPO REAL (HERRAMIENTA API)
 ======================================================
@@ -133,6 +142,11 @@ PERFIL DEL CLIENTE EN SISTEMA INTERNO
 CONTEXTO NORMATIVO RECUPERADO DEL BANCO (RAG INTERNO)
 ======================================================
 {retrieved_context}
+
+======================================================
+RESULTADO DEL MOTOR DE REGLAS DEL MANUAL (OBLIGATORIO RESPETAR)
+======================================================
+{policy_checks or "No aplica."}
 
 ======================================================
 CONSULTA DEL USUARIO / EJECUTIVO

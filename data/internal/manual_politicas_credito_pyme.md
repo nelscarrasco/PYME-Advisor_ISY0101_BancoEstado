@@ -76,7 +76,8 @@ Toda operación de crédito debe ser evaluada considerando la capacidad de pago 
 
 ### Artículo 11: Derivación al Comité Especial de Riesgo Crediticio
 Toda solicitud que presente alguna de las siguientes características no podrá ser aprobada por el flujo regular del agente ni por el ejecutivo comercial, debiendo ser derivada formalmente con acta al Comité Regional de Crédito:
-1. Solicitudes con ratios de endeudamiento entre 2.51 y 3.5 veces.
+1. Solicitudes con ratios de endeudamiento superiores al límite del Artículo 5 (2.5 veces, o 3.2 veces en transporte y manufactura) y de hasta 3.5 veces. Sobre 3.5 veces la solicitud no es admisible.
+5. Solicitudes que no cumplan la cobertura mínima del servicio de la deuda (DSCR 1.25) del Artículo 5, o cualquier situación no tipificada en este manual.
 2. Clientes con caídas de facturación anual superiores al 30% interanual.
 3. Montos que superen las 10.000 UF.
 4. Empresas que operen en rubros catalogados como de Alto Riesgo Ambiental o Social (minería extractiva informal, juegos de azar o armamento).

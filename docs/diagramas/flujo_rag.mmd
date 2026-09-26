@@ -4,17 +4,20 @@ sequenceDiagram
     participant A as Agente (agent_core)
     participant C as ClientLookupTool
     participant I as EconomicIndicatorsTool
+    participant R as Motor de reglas
     participant V as Vector Store (RAG)
     participant G as LLM / Motor local
     E->>A: Consulta en lenguaje natural (RUT, monto, destino)
     A->>A: Extrae RUT y monto (regex)
     A->>C: find_by_rut(RUT)
-    C-->>A: Perfil (antigüedad, DICOM, leverage, ventas UF)
+    C-->>A: Perfil (antigüedad, DICOM, leverage, DSCR, ventas UF)
     A->>I: get_indicators()
-    I-->>A: UF, Dólar, UTM (API en vivo o caché)
-    A->>V: search(consulta + giro + monto, top_k=3)
-    V-->>A: Fragmentos del Manual/Catálogo con score
-    A->>G: System prompt + contexto RAG + perfil + UF
-    G-->>A: Dictamen 5 secciones con citas
-    A->>A: Guarda turno en memoria de sesión
-    A-->>E: Respuesta + fuentes + herramientas usadas
+    I-->>A: UF, Dólar, UTM (API en vivo, caché o respaldo)
+    A->>R: evaluate_policies(perfil, monto UF, producto)
+    R-->>A: Estado preliminar + verificación por artículo
+    A->>V: 9 sub-consultas por dimensión + consulta original
+    V-->>A: Fragmentos del Manual/Catálogo (sin duplicados, con score)
+    A->>G: Prompt: reglas + contexto RAG + perfil + UF + memoria
+    G-->>A: Dictamen de 5 secciones con citas
+    A->>A: Guardrail: cada cita respaldada por un fragmento recuperado
+    A-->>E: Respuesta + fuentes + herramientas + validación

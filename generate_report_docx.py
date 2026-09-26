@@ -1,22 +1,93 @@
 """
-Script Generador del Informe Técnico en Formato Microsoft Word (.docx).
-Convierte la especificación técnica en un documento formateado profesionalmente
-cumpliendo el límite de 5 páginas y los estándares formales del encargo (APA 7).
+Generador del Informe Técnico (Word .docx) de la EP1 ISY0101.
+Produce docs/INFORME_TECNICO_SOLUCION_RAG.docx (máximo 5 páginas, referencias APA 7).
+Ejecutar desde la raíz del repositorio:  python generate_report_docx.py
 """
 
 import os
 import docx
 from docx.shared import Inches, Pt, RGBColor
-from docx.enum.text import WD_ALIGN_PARAGRAPH
+from docx.enum.text import WD_ALIGN_PARAGRAPH, WD_COLOR_INDEX
 from docx.enum.table import WD_TABLE_ALIGNMENT
-from docx.oxml import OxmlElement, parse_xml
-from docx.oxml.ns import nsdecls, qn
-from docx.enum.text import WD_COLOR_INDEX
+from docx.oxml import parse_xml
+from docx.oxml.ns import nsdecls
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+AZUL = RGBColor(0, 51, 153)
+GRIS = RGBColor(40, 40, 40)
+REPO_URL = "https://github.com/nelscarrasco/PYME-Advisor_ISY0101_BancoEstado"
 
-def add_figure(doc, rel_path, width_in, caption):
-    """Inserta una figura centrada con su leyenda (Figura N)."""
+REFLEXION_JUAN = "Durante el desarrollo del proyecto, mi principal foco técnico fue estructurar la segmentación jerárquica de los documentos normativos de BancoEstado y validar el almacén vectorial. Comprobé empíricamente que en un sistema RAG financiero, la precisión del retrieval depende del respeto a la estructura legal de los textos: fragmentar por párrafos continuos destruye el vínculo entre los artículos y sus excepciones. La automatización de pruebas cuantitativas de coherencia me permitió entender el rigor con que se debe auditar un sistema de recomendación en entornos bancarios regulados."
+REFLEXION_BARBARA = "Mi participación se centró en la orquestación agéntica y la integración de la API externa de indicadores económicos en tiempo real. Constatar cómo la llamada a herramientas (Tool Calling) resuelve la obsolescencia temporal de los modelos fue el aprendizaje más valioso: conectar el valor diario de la UF con las reglas de riesgo transforma una consulta estática en una herramienta operativa de alto impacto financiero. Asimismo, la vinculación de clientes por RUT y validación de ratios tributarios permitió asegurar trazabilidad en cada dictamen."
+REFLEXION_NELSON = "Mi trabajo se concentró en la ingeniería de prompts, el diseño de guardrails negativos estrictos para evitar alucinaciones y la gestión de memoria conversacional. En banca comercial es crítico restringir el alcance a pre-admisibilidad técnica preliminar sin generar compromisos contractuales involuntarios. Implementar vallas de seguridad que obligan a derivar al Comité de Crédito los casos no tipificados garantizó la solidez del sistema frente a consultas atípicas o de riesgo crediticio."
+CONCLUSION = "La implementación de la arquitectura PYME-Advisor demuestra que la combinación de agentes inteligentes, pipelines RAG semánticos y consumo de herramientas en tiempo real resuelve integralmente las deficiencias de los modelos generativos puros en entornos corporativos de alta regulación. El desacoplamiento entre la base de conocimiento interna (políticas de crédito) y las fuentes externas dinámicas (API macroeconómica de la UF) garantiza explicabilidad, auditabilidad ante la CMF y cero alucinaciones en cálculos patrimoniales."
+
+
+def shade(cell, fill_hex):
+    cell._tc.get_or_add_tcPr().append(parse_xml(f'<w:shd {nsdecls("w")} w:fill="{fill_hex}"/>'))
+
+
+def heading(doc, text, size=12):
+    h = doc.add_heading(level=1)
+    h.paragraph_format.space_before = Pt(8)
+    h.paragraph_format.space_after = Pt(3)
+    r = h.add_run(text)
+    r.font.size = Pt(size)
+    r.bold = True
+    r.font.color.rgb = AZUL
+
+
+def para(doc, parts, after=4, size=None):
+    """parts: str o lista de (texto, bold)."""
+    p = doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(after)
+    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+    if isinstance(parts, str):
+        parts = [(parts, False)]
+    for text, bold in parts:
+        r = p.add_run(text)
+        r.bold = bold
+        if size:
+            r.font.size = Pt(size)
+    return p
+
+
+def bullet(doc, label, text, after=1):
+    p = doc.add_paragraph(style="List Bullet")
+    p.paragraph_format.space_after = Pt(after)
+    if label:
+        p.add_run(label).bold = True
+    p.add_run(text)
+    return p
+
+
+def table(doc, headers, rows, widths=None, font=8):
+    t = doc.add_table(rows=len(rows) + 1, cols=len(headers))
+    t.alignment = WD_TABLE_ALIGNMENT.CENTER
+    for i, h in enumerate(headers):
+        c = t.cell(0, i)
+        shade(c, "003399")
+        r = c.paragraphs[0].add_run(h)
+        r.bold = True
+        r.font.size = Pt(font)
+        r.font.color.rgb = RGBColor(255, 255, 255)
+    for ri, row in enumerate(rows, start=1):
+        for ci, text in enumerate(row):
+            c = t.cell(ri, ci)
+            shade(c, "F1F5F9" if ri % 2 == 0 else "FFFFFF")
+            p = c.paragraphs[0]
+            p.paragraph_format.space_before = Pt(1)
+            p.paragraph_format.space_after = Pt(1)
+            p.add_run(text).font.size = Pt(font)
+    if widths:
+        for row in t.rows:
+            for i, w in enumerate(widths):
+                row.cells[i].width = Inches(w)
+    doc.add_paragraph().paragraph_format.space_after = Pt(0)
+    return t
+
+
+def figure(doc, rel_path, width_in, caption):
     p = doc.add_paragraph()
     p.alignment = WD_ALIGN_PARAGRAPH.CENTER
     p.paragraph_format.space_after = Pt(0)
@@ -29,317 +100,150 @@ def add_figure(doc, rel_path, width_in, caption):
     r.font.size = Pt(8.5)
     r.font.color.rgb = RGBColor(90, 90, 90)
 
-def set_cell_background(cell, fill_hex):
-    tcPr = cell._tc.get_or_add_tcPr()
-    shd = parse_xml(f'<w:shd {nsdecls("w")} w:fill="{fill_hex}"/>')
-    tcPr.append(shd)
+
+def pending(p, text):
+    r = p.add_run(text)
+    r.font.highlight_color = WD_COLOR_INDEX.YELLOW
+
 
 def create_report_docx(output_path=os.path.join(BASE_DIR, "docs", "INFORME_TECNICO_SOLUCION_RAG.docx")):
     doc = docx.Document()
+    for s in doc.sections:
+        s.top_margin = s.bottom_margin = Inches(0.8)
+        s.left_margin = s.right_margin = Inches(0.8)
+    normal = doc.styles["Normal"]
+    normal.font.name = "Calibri"
+    normal.font.size = Pt(10)
+    normal.font.color.rgb = GRIS
 
-    # Configuración de Márgenes (Estándar 2.0 cm para maximizar aprovechamiento en 5 páginas)
-    sections = doc.sections
-    for section in sections:
-        section.top_margin = Inches(0.8)
-        section.bottom_margin = Inches(0.8)
-        section.left_margin = Inches(0.8)
-        section.right_margin = Inches(0.8)
+    # Encabezado
+    p = doc.add_paragraph()
+    p.alignment = WD_ALIGN_PARAGRAPH.RIGHT
+    r = p.add_run("ISY0101 - INGENIERÍA DE SOLUCIONES CON IA | DUOC UC\nEVALUACIÓN PARCIAL N°1 - ENCARGO")
+    r.font.size = Pt(8.5)
+    r.bold = True
+    r.font.color.rgb = RGBColor(120, 120, 120)
+    p = doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(2)
+    r = p.add_run("PYME-Advisor: Agente con LLM y RAG para la Pre-Evaluación Crediticia de PYMEs en BancoEstado Microempresas")
+    r.font.size = Pt(16)
+    r.bold = True
+    r.font.color.rgb = AZUL
+    p = doc.add_paragraph()
+    p.paragraph_format.space_after = Pt(8)
+    r = p.add_run(f"Integrantes: Juan Serna, Bárbara Bustamante, Nelson Carrasco | Fecha: 25 de septiembre de 2026 | Repositorio: {REPO_URL}")
+    r.font.size = Pt(9)
+    r.italic = True
+    r.font.color.rgb = RGBColor(100, 100, 100)
 
-    # Estilos de Fuente
-    style_normal = doc.styles['Normal']
-    style_normal.font.name = 'Calibri'
-    style_normal.font.size = Pt(10.5)
-    style_normal.font.color.rgb = RGBColor(40, 40, 40)
+    # 1. Caso
+    heading(doc, "1. Análisis del Caso Organizacional y Requerimientos (IE1)")
+    para(doc, [("Organización. ", True), ("BancoEstado Microempresas es la filial de BancoEstado orientada al financiamiento de micro y pequeñas empresas en todo Chile, con productos de capital de trabajo, leasing y factoring y acceso a garantías estatales como FOGAPE. Las MiPymes superan 1,2 millones de empresas, representan el 98,5% de las empresas formales del país y concentran el 48% del empleo (Ministerio de Economía, Fomento y Turismo, 2026), por lo que la velocidad y consistencia con que se evalúa su acceso al crédito tiene impacto directo.", False)])
+    para(doc, [("Problema. ", True), ("La pre-evaluación inicial de una solicitud exige que el ejecutivo cruce manualmente tres fuentes: (a) el manual interno de políticas de riesgo (antigüedad, morosidad, endeudamiento, garantías y atribuciones), (b) los antecedentes del cliente y (c) indicadores que cambian a diario, como la UF, en la que se expresan montos y tramos. Esto produce demoras, criterios dispares entre ejecutivos y errores de conversión UF–CLP. Un LLM genérico no resuelve el problema: desconoce las políticas internas, no conoce la UF del día y puede inventar requisitos.", False)])
+    para(doc, [("Alcance. ", True), ("La organización es real, pero el Manual de Políticas de Crédito (11 artículos), el Catálogo de Productos (4 secciones) y la base de 5 clientes son documentos simulados construidos por el equipo; no son normativa oficial de BancoEstado.", False)])
+    para(doc, [("Requerimientos y objetivos medibles:", True)], after=1)
+    bullet(doc, "R1 Dictamen preliminar trazable: ", "estado PRE-ADMISIBLE / NO ADMISIBLE / COMITÉ en menos de 2 s, sin emitir aprobaciones definitivas.")
+    bullet(doc, "R2 Fidelidad normativa: ", "100% de las citas del dictamen respaldadas por un fragmento recuperado del manual (meta mínima 95%).")
+    bullet(doc, "R3 Datos externos vigentes: ", "conversión UF→CLP exacta con el valor del día obtenido por API, con continuidad si la API falla.")
+    bullet(doc, "R4 Control de riesgo: ", "derivación automática al Comité en los supuestos del Art. 11 y respeto al secreto bancario y a la Ley 19.628 (sólo se envían al modelo los campos necesarios del cliente).", after=4)
 
-    # PORTADA / ENCABEZADO INSTITUCIONAL
-    p_header = doc.add_paragraph()
-    p_header.alignment = WD_ALIGN_PARAGRAPH.RIGHT
-    run_inst = p_header.add_run("ISY0101 - INGENIERÍA DE SOLUCIONES CON IA | DUOC UC\nEVALUACIÓN PARCIAL N°1 - ENCARGO CON PRESENTACIÓN")
-    run_inst.font.size = Pt(8.5)
-    run_inst.font.color.rgb = RGBColor(120, 120, 120)
-    run_inst.bold = True
-
-    # TÍTULO PRINCIPAL
-    p_title = doc.add_paragraph()
-    p_title.paragraph_format.space_before = Pt(6)
-    p_title.paragraph_format.space_after = Pt(2)
-    run_title = p_title.add_run("Diseño e Implementación de Solución Agéntica con LLM y RAG:\nAsesor Financiero y de Garantías PYME ('PYME-Advisor')")
-    run_title.font.size = Pt(17)
-    run_title.bold = True
-    run_title.font.color.rgb = RGBColor(0, 51, 153) # Azul corporativo BancoEstado
-
-    # SUBTÍTULO Y METADATOS
-    p_meta = doc.add_paragraph()
-    p_meta.paragraph_format.space_after = Pt(12)
-    run_meta = p_meta.add_run("Caso de Estudio: BancoEstado Microempresas | Integrantes: Juan Serna, Bárbara Bustamante, Nelson Carrasco | Fecha: Septiembre 2026")
-    run_meta.font.size = Pt(9.5)
-    run_meta.font.italic = True
-    run_meta.font.color.rgb = RGBColor(100, 100, 100)
-
-    # SECCIÓN 1: ANÁLISIS DEL CASO ORGANIZACIONAL (IE1)
-    h1 = doc.add_heading(level=1)
-    h1.paragraph_format.space_before = Pt(10)
-    h1.paragraph_format.space_after = Pt(4)
-    run_h1 = h1.add_run("1. Análisis del Caso Organizacional y Requerimientos de IA (IE1)")
-    run_h1.font.size = Pt(12)
-    run_h1.bold = True
-    run_h1.font.color.rgb = RGBColor(0, 51, 153)
-
-    p1 = doc.add_paragraph()
-    p1.paragraph_format.space_after = Pt(4)
-    p1.add_run("En Chile, las micro y pequeñas empresas representan el 98,6% del tejido productivo formal, pero sufren una fricción crediticia superior al 45% debido a la complejidad en la interpretación de los manuales de riesgo comercial y al cálculo manual de balances indexados en Unidades de Fomento (UF) (Ministerio de Economía, 2024). En BancoEstado Microempresas, principal entidad de fomento e inclusión financiera del país, el levantamiento manual de antecedentes en sucursales genera demoras de entre 7 y 10 días hábiles por prospecto. La sobrecarga de los ejecutivos conduce frecuentemente a interpretaciones dispares de las normativas de apalancamiento (leverage), morosidad en el Boletín Comercial y elegibilidad para fondos estatales de fianza como FOGAPE.")
-
-    p2 = doc.add_paragraph()
-    p2.paragraph_format.space_after = Pt(6)
-    p2.add_run("Para abordar este problema, se diseñó e implementó ").font.color.rgb = RGBColor(40, 40, 40)
-    p2.add_run("PYME-Advisor").bold = True
-    p2.add_run(", una solución de software inteligente basada en un agente autónomo LLM con arquitectura RAG (Retrieval-Augmented Generation) y herramientas de consulta en tiempo real. Los objetivos específicos de la intervención son: (1) reducir el tiempo de respuesta preliminar de 7 días a menos de 2 segundos; (2) asegurar un índice de fidelidad normativa (groundedness) superior al 95% para eliminar alucinaciones en condiciones de crédito; (3) integrar la API pública mindicador.cl (indicadores publicados por el Banco Central de Chile) para resolver la indexación dinámica de UF a pesos chilenos ($CLP); y (4) personalizar el dictamen recomendando el producto financiero idóneo (Capital de Trabajo, Leasing o Factoring).")
-
-    p_sim = doc.add_paragraph()
-    p_sim.paragraph_format.space_after = Pt(6)
-    p_sim.add_run("Alcance del caso: ").bold = True
-    p_sim.add_run("la organización es real, pero el Manual de Políticas de Crédito, el Catálogo de Productos y la base de clientes son documentos simulados construidos por el equipo para el prototipo; no corresponden a normativa interna oficial de BancoEstado. Los tiempos de proceso actuales (7 a 10 días) son un supuesto de diseño del equipo.")
-
-    # SECCIÓN 2: FORMULACIÓN Y JUSTIFICACIÓN DE PROMPTS (IE2)
-    h2 = doc.add_heading(level=1)
-    h2.paragraph_format.space_before = Pt(10)
-    h2.paragraph_format.space_after = Pt(4)
-    run_h2 = h2.add_run("2. Formulación y Justificación de Prompts Optimizados (IE2)")
-    run_h2.font.size = Pt(12)
-    run_h2.bold = True
-    run_h2.font.color.rgb = RGBColor(0, 51, 153)
-
-    p_prompt_desc = doc.add_paragraph()
-    p_prompt_desc.paragraph_format.space_after = Pt(4)
-    p_prompt_desc.add_run("El diseño del prompt del sistema (System Prompt) y las directrices de inferencia se fundamentan en técnicas de Prompt Engineering estructurado, integrando definición de rol experto, guardrails de prudencia financiera y aprendizaje contextual en pocas muestras (Few-Shot Prompting):")
-
-    # Cuadro del System Prompt
-    table_p = doc.add_table(rows=1, cols=1)
-    table_p.alignment = WD_TABLE_ALIGNMENT.CENTER
-    cell_p = table_p.cell(0, 0)
-    set_cell_background(cell_p, "F1F5F9")
-    p_in_cell = cell_p.paragraphs[0]
-    p_in_cell.paragraph_format.space_before = Pt(3)
-    p_in_cell.paragraph_format.space_after = Pt(3)
-    run_code = p_in_cell.add_run(
+    # 2. Prompts
+    heading(doc, "2. Formulación de Prompts (IE2)")
+    para(doc, "El prompt se ensambla en src/agent/prompts.py en bloques ordenados: (1) system prompt con rol y reglas, (2) ejemplo few-shot de un dictamen completo, (3) memoria de sesión, (4) indicadores de la API, (5) perfil del cliente, (6) fragmentos RAG con fuente y relevancia, (7) resultado del motor de reglas y (8) la consulta. Extracto del system prompt:", after=3)
+    t = doc.add_table(rows=1, cols=1)
+    c = t.cell(0, 0)
+    shade(c, "F1F5F9")
+    r = c.paragraphs[0].add_run(
         'Eres "PYME-Advisor", Agente Consultor de Riesgo Crediticio de BancoEstado Microempresas.\n'
-        '1. PRINCIPIO DE FIDELIDAD (GROUNDEDNESS): Basa tus conclusiones EXCLUSIVAMENTE en el contexto normativo provisto. Prohibido inventar condiciones o montos. Si un caso excede la norma, deriva al Comité Especial (Art. 11).\n'
-        '2. TRAZABILIDAD: Cita siempre la fuente y artículo [Manual de Crédito, Art. X] o [API mindicador.cl / CMF].\n'
-        '3. CONVERSIÓN EN TIEMPO REAL: Convierte montos en UF a $CLP multiplicando por el valor oficial de la API.\n'
-        '4. ESTRUCTURA: Entrega 5 secciones: 1) Dictamen, 2) Fundamentación RAG, 3) FOGAPE, 4) Producto, 5) Pasos.'
-    )
-    run_code.font.name = 'Consolas'
-    run_code.font.size = Pt(8.5)
-    run_code.font.color.rgb = RGBColor(30, 41, 59)
+        "1. FIDELIDAD: basa tus conclusiones EXCLUSIVAMENTE en el contexto provisto; PROHIBIDO inventar requisitos, plazos o montos.\n"
+        '   Si el caso no está en el manual: "debe elevarse a evaluación especial".\n'
+        "2. TRAZABILIDAD: toda afirmación normativa cita [Manual de Crédito, Art. X] o [Catálogo de Productos, Sección N].\n"
+        "3. DATOS EXTERNOS: convierte todo monto UF a CLP con el valor de la API y cita la fuente.\n"
+        "4. ESTADO: debe coincidir con el MOTOR DE REGLAS; explícalo, no lo recalcules. Nunca emitas aprobación definitiva.\n"
+        "5. FORMATO: 1) Dictamen 2) Fundamentación 3) Garantías/FOGAPE 4) Producto 5) Documentación.")
+    r.font.name = "Consolas"
+    r.font.size = Pt(8)
+    doc.add_paragraph().paragraph_format.space_after = Pt(0)
+    para(doc, [("Justificación. ", True), ("El rol fija el registro y el umbral de prudencia bancaria. Las restricciones negativas y la cláusula de escape (\"elevar a evaluación especial\") reducen el espacio de respuesta a lo que el contexto respalda. La cita obligatoria con formato fijo permite verificar automáticamente cada afirmación (sección 5). Entregar al modelo el resultado del motor de reglas evita que el LLM decida el estado crediticio, que es la parte con mayor riesgo regulatorio. El few-shot y la temperatura 0,1 estabilizan el formato de 5 secciones.", False)])
 
-    p_prompt_just = doc.add_paragraph()
-    p_prompt_just.paragraph_format.space_before = Pt(4)
-    p_prompt_just.paragraph_format.space_after = Pt(6)
-    p_prompt_just.add_run("Justificación Técnica: ").bold = True
-    p_prompt_just.add_run("La asignación de persona fija el registro lingüístico formal exigido en la banca comercial. Los guardrails negativos impiden legalmente comprometer aprobaciones finales fuera de política, mientras que la obligatoriedad de citar artículos garantiza auditabilidad regulatoria ante la CMF. Los ejemplos Few-Shot condicionan al modelo a estructurar su respuesta en un esquema de cinco puntos invariable, mitigando la dispersión estocástica de los LLMs.")
+    # 3. RAG
+    heading(doc, "3. Diseño e Implementación del Pipeline RAG (IE3)")
+    bullet(doc, "Fuentes internas: ", "Manual de Crédito y Catálogo (Markdown) segmentados por encabezado y artículo (chunker.py), generando 27 fragmentos con metadatos de fuente, título y artículo/sección; base de clientes JSON consultada por RUT (ClientLookupTool).")
+    bullet(doc, "Fuente externa: ", "API pública mindicador.cl (valores del Banco Central de Chile) para UF, dólar y UTM (EconomicIndicatorsTool), con caché de 1 hora; si la API falla usa el último valor real guardado y, en último caso, valores de contingencia, informando siempre la fuente usada.")
+    bullet(doc, "Índice y búsqueda: ", "TF-IDF con n-gramas 1–3 y similitud coseno (vector_store.py). La consulta se descompone en sub-consultas por dimensión de riesgo (segmento, antigüedad, morosidad, endeudamiento, FOGAPE, garantías, producto, documentos y comité), se recupera el top-1/2 de cada una y se unen sin duplicados.", after=3)
+    figure(doc, "docs/diagramas/flujo_rag.png", 5.0, "Figura 1. Flujo de información por consulta: herramientas internas y externas, motor de reglas, recuperación multi-consulta, generación y verificación.")
 
-    # SECCIÓN 3: DISEÑO E IMPLEMENTACIÓN DEL PIPELINE RAG (IE3)
-    h3 = doc.add_heading(level=1)
-    h3.paragraph_format.space_before = Pt(10)
-    h3.paragraph_format.space_after = Pt(4)
-    run_h3 = h3.add_run("3. Diseño e Implementación del Pipeline RAG y Fuentes de Datos (IE3)")
-    run_h3.font.size = Pt(12)
-    run_h3.bold = True
-    run_h3.font.color.rgb = RGBColor(0, 51, 153)
+    # 4. Arquitectura
+    heading(doc, "4. Arquitectura de la Solución (IE4)")
+    figure(doc, "docs/diagramas/arquitectura.png", 4.0, "Figura 2. Arquitectura por capas de PYME-Advisor (fuente editable: docs/diagramas/arquitectura.mmd).")
+    table(doc, ["Módulo", "Archivo", "Función en la arquitectura"], [
+        ("Interfaz", "app.py, web_server.py", "CLI y dashboard FastAPI con panel de auditoría (herramientas, fragmentos, guardrail)."),
+        ("Orquestador", "agent_core.py", "Extrae RUT/monto, invoca herramientas, recupera, genera y verifica la salida."),
+        ("Motor de reglas", "policy_engine.py", "Aplica los Art. 1, 3, 4, 5 y 11 y fija el estado preliminar de forma determinista."),
+        ("Recuperación", "chunker.py, vector_store.py", "Segmentación por artículo e índice TF-IDF con búsqueda multi-consulta."),
+        ("Herramientas", "client_lookup.py, economic_indicators.py", "Base interna de clientes y API de indicadores con caché y respaldo."),
+        ("Contexto", "context_manager.py", "Memoria de sesión (5 turnos) y cliente activo para preguntas de seguimiento."),
+        ("Generación", "prompts.py + gpt-4o-mini", "LLM si existe OPENAI_API_KEY; si no, motor de síntesis local que redacta sólo con artículos recuperados."),
+        ("Guardrail de salida", "agent_core.validate_citations", "Marca toda cita sin fragmento de respaldo y corrige un estado que contradiga al motor de reglas."),
+    ], widths=[1.3, 1.9, 3.7])
 
-    p_rag = doc.add_paragraph()
-    p_rag.paragraph_format.space_after = Pt(4)
-    p_rag.add_run("El flujo RAG implementado desacopla eficientemente dos tipos de fuentes de datos para enriquecer la respuesta del agente:")
-    
-    p_rag_int = doc.add_paragraph()
-    p_rag_int.paragraph_format.space_after = Pt(2)
-    p_rag_int.add_run("• Fuentes Internas: ").bold = True
-    p_rag_int.add_run("Se integró el Manual Institucional de Políticas de Crédito PYME (11 Artículos que regulan antigüedad, límites de endeudamiento leverage, exclusiones de DICOM y garantías) y el Catálogo de 4 Productos Comerciales. La fragmentación se realizó mediante un algoritmo de ")
-    p_rag_int.add_run("Semantic & Hierarchical Chunking").bold = True
-    p_rag_int.add_run(" que respeta la estructura de artículos legales y títulos (26 fragmentos con metadatos de sección y fuente), indexados en un Vector Store con matriz TF-IDF sublineal con n-gramas (1 a 3) y similitud de coseno, logrando búsquedas semánticas deterministas de 0,002 segundos.")
+    # 5. Evaluación
+    heading(doc, "5. Evaluación, Decisiones de Diseño y Resultados (IE5)")
+    para(doc, "La batería src/evaluation/evaluate_coherence.py ejecuta 7 casos con resultado esperado conocido y mide la coherencia entre los datos recuperados y la respuesta:", after=3)
+    table(doc, ["Caso", "Esperado = Obtenido", "Artículos requeridos (recuperados)", "Citas respaldadas"], [
+        ("1. Transportes Biobío, leasing 1.500 UF", "PRE-ADMISIBLE", "3, 4, 5, 6, 9 (100%)", "100%"),
+        ("2. Panadería El Trigal, 800 UF, DICOM $1,25 M", "NO ADMISIBLE", "4 (100%)", "100%"),
+        ("3. Constructora del Sur, leverage 3,4x, DSCR 1,1", "COMITÉ", "5, 11 (100%)", "100%"),
+        ("4. Frutícola Express, 5 meses", "NO ADMISIBLE", "3 (100%)", "100%"),
+        ("5. TecnoAgro, capital de trabajo 600 UF", "PRE-ADMISIBLE", "3, 4, 5, 6, 8 (100%)", "100%"),
+        ("6. TecnoAgro, 12.000 UF", "COMITÉ", "11 (100%)", "100%"),
+        ("7. Consulta general FOGAPE", "INFORMACIÓN GENERAL", "6 (100%)", "100%"),
+    ], widths=[2.6, 1.4, 1.9, 1.0])
+    para(doc, [("Resultados: ", True), ("precisión de dictamen 100%; recall de recuperación 100% frente a 17,1% de la línea base que busca sólo con la consulta original (top-3); groundedness de citas 100%; consistencia UF→CLP 100%; latencia bajo 0,3 s por consulta. Además, 17 pruebas unitarias (unittest) aprobadas. Logs y capturas en docs/evidencias.", False)])
+    table(doc, ["Decisión", "Alternativa descartada", "Justificación"], [
+        ("Motor de reglas + LLM", "Que el LLM decida el estado", "La decisión crediticia debe ser auditable y reproducible; el LLM explica y el motor decide."),
+        ("Descomposición en sub-consultas", "Búsqueda única top-k", "Una consulta cubre varias reglas; medido: recall 17,1% → 100%."),
+        ("TF-IDF 1–3 gramas", "Embeddings densos", "Corpus pequeño y terminología exacta (DICOM, FOGAPE, UF); sin costo ni dependencia externa. Se revisará si crece el corpus."),
+        ("Chunking por artículo", "Ventanas fijas de caracteres", "Una regla y su excepción quedan en el mismo fragmento y la cita al artículo es inequívoca."),
+        ("Verificación de citas", "Confiar en el prompt", "El prompt no garantiza fidelidad; la verificación la mide y la hace visible al ejecutivo."),
+        ("Caché + último valor real", "Consultar la API siempre", "Evita la latencia y la caída del servicio sin inventar valores."),
+    ], widths=[1.6, 1.6, 3.7])
+    para(doc, [("Limitaciones: ", True), ("las métricas se midieron con el motor de síntesis local (sin OPENAI_API_KEY); con el LLM activo la redacción no es determinista y debe re-evaluarse con la misma batería. Los puntajes de similitud TF-IDF son moderados (0,2–0,6). Los documentos y clientes son simulados.", False)])
 
-    p_rag_ext = doc.add_paragraph()
-    p_rag_ext.paragraph_format.space_after = Pt(6)
-    p_rag_ext.add_run("• Fuentes Externas en Tiempo Real: ").bold = True
-    p_rag_ext.add_run("Se desarrolló la herramienta ")
-    p_rag_ext.add_run("EconomicIndicatorsTool").bold = True
-    p_rag_ext.add_run(" que consulta en tiempo real la API pública mindicador.cl (valores del Banco Central de Chile), recuperando los valores actualizados de la UF ($41.008,10 CLP), Dólar Observado y UTM. Incluye una capa de caché local con tiempo de expiración (TTL = 1 hora) y contingencia normativa en disco para resiliencia ante cortes de conectividad externa.")
+    # 6. Conclusiones y reflexiones
+    heading(doc, "6. Conclusiones y Reflexiones Individuales")
+    para(doc, [("Conclusiones del proyecto: ", True), (CONCLUSION, False)])
+    para(doc, [("Reflexión individual - Juan Serna: ", True), (REFLEXION_JUAN, False)])
+    para(doc, [("Reflexión individual - Bárbara Bustamante: ", True), (REFLEXION_BARBARA, False)])
+    para(doc, [("Reflexión individual - Nelson Carrasco: ", True), (REFLEXION_NELSON, False)])
 
-    add_figure(doc, "docs/diagramas/flujo_rag.png", 5.4, "Figura 1. Flujo de información del pipeline RAG: fuentes internas (base de clientes, manual y catálogo) y externa (API de indicadores) integradas en el prompt.")
-
-    # SECCIÓN 4: ARQUITECTURA DE LA SOLUCIÓN (IE4, IE7)
-    h4 = doc.add_heading(level=1)
-    h4.paragraph_format.space_before = Pt(10)
-    h4.paragraph_format.space_after = Pt(4)
-    run_h4 = h4.add_run("4. Arquitectura de la Solución y Gestión de Contexto (IE4, IE7)")
-    run_h4.font.size = Pt(12)
-    run_h4.bold = True
-    run_h4.font.color.rgb = RGBColor(0, 51, 153)
-
-    p_arq = doc.add_paragraph()
-    p_arq.paragraph_format.space_after = Pt(4)
-    p_arq.add_run("La arquitectura global desacopla cuatro capas funcionales: (1) Capa de Interfaz (Consola CLI y Dashboard Web interactivo FastAPI); (2) Capa de Orquestación Agéntica (Agent Core con extracción regex de RUT y montos, y Context Manager con ventana deslizante de 5 turnos); (3) Capa de Recuperación RAG y Herramientas (Vector Store y API externa); y (4) Capa de Generación Fiel y Evaluación (Grounded Engine y RAG Coherence Evaluator).")
-
-    add_figure(doc, "docs/diagramas/arquitectura.png", 4.2, "Figura 2. Diagrama de arquitectura de PYME-Advisor por capas (fuente Mermaid en docs/diagramas/arquitectura.mmd).")
-
-    # Tabla resumen de componentes
-    table_arq = doc.add_table(rows=5, cols=3)
-    table_arq.alignment = WD_TABLE_ALIGNMENT.CENTER
-    headers = ["Capa Arquitectónica", "Módulos Clave Implementados", "Rol Técnico y Justificación"]
-    for i, h in enumerate(headers):
-        cell = table_arq.cell(0, i)
-        set_cell_background(cell, "003399")
-        p = cell.paragraphs[0]
-        run = p.add_run(h)
-        run.bold = True
-        run.font.color.rgb = RGBColor(255, 255, 255)
-        run.font.size = Pt(9)
-
-    rows_data = [
-        ("Interfaz y Presentación", "app.py (CLI) y web_server.py (FastAPI Dashboard)", "Permite la interacción de ejecutivos y la demostración interactiva en la defensa."),
-        ("Orquestación Agéntica", "agent_core.py, context_manager.py, prompts.py", "Enruta intenciones, extrae RUT/UF, preserva la sesión y aplica guardrails normativos."),
-        ("Recuperación RAG", "document_loader.py, chunker.py, vector_store.py", "Segmentación jerárquica de políticas internas y recuperación top-k con similitud coseno."),
-        ("Herramientas Externas", "economic_indicators.py, client_lookup.py", "Consumo en vivo de la API de UF/Dólar y validación cruzada en la base de clientes.")
+    # 7. IA y referencias
+    heading(doc, "7. Declaración de Uso de IA y Referencias (APA 7)", size=11)
+    p = para(doc, [("Uso de IA: ", True), ("conforme a las indicaciones de la evaluación, el equipo declara que utilizó Claude (Anthropic, 2026) para revisar la completitud del encargo frente a la pauta, corregir y ampliar el código (motor de reglas, recuperación multi-consulta, verificación de citas y evaluador), redactar y revisar este informe y el README, generar los diagramas y capturar la evidencia de pruebas. ", False)])
+    pending(p, "[COMPLETAR: otras herramientas de IA usadas y para qué.] ")
+    p.add_run("Todo el contenido generado fue revisado y validado por el equipo. ")
+    pending(p, "[CONFIRMAR: las conclusiones y reflexiones individuales fueron redactadas por el equipo sin apoyo de IA.]")
+    refs = [
+        "Anthropic. (2026). Claude (versión Opus 5.5) [Modelo de lenguaje de gran tamaño]. https://claude.ai",
+        "Comisión para el Mercado Financiero. (s.f.). Recopilación Actualizada de Normas de Bancos (RAN). https://www.cmfchile.cl/portal/principal/613/w3-propertyvalue-29580.html",
+        "Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., Küttler, H., Lewis, M., Yih, W., Rocktäschel, T., Riedel, S., & Kiela, D. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. Advances in Neural Information Processing Systems, 33, 9459–9474.",
+        "mindicador.cl. (s.f.). API de indicadores económicos diarios en Chile. https://mindicador.cl",
+        "Ministerio de Economía, Fomento y Turismo. (2026). MiPymes y emprendimiento. https://www.economia.gob.cl/wp-content/uploads/2026/02/10-03-26-mipymes-y-emprendimiento.pdf",
+        "Shuster, K., Poff, S., Chen, M., Kiela, D., & Weston, J. (2021). Retrieval augmentation reduces hallucination in conversation. En Findings of the Association for Computational Linguistics: EMNLP 2021 (pp. 3784–3803).",
+        "Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2023). ReAct: Synergizing reasoning and acting in language models. International Conference on Learning Representations (ICLR 2023).",
     ]
+    for ref in refs:
+        rp = doc.add_paragraph()
+        rp.paragraph_format.space_after = Pt(1)
+        rp.paragraph_format.left_indent = Inches(0.3)
+        rp.paragraph_format.first_line_indent = Inches(-0.3)
+        rr = rp.add_run(ref)
+        rr.font.size = Pt(8.5)
 
-    for row_idx, data in enumerate(rows_data, start=1):
-        for col_idx, text in enumerate(data):
-            cell = table_arq.cell(row_idx, col_idx)
-            set_cell_background(cell, "F8FAFC" if row_idx % 2 == 0 else "FFFFFF")
-            p = cell.paragraphs[0]
-            p.paragraph_format.space_before = Pt(2)
-            p.paragraph_format.space_after = Pt(2)
-            run = p.add_run(text)
-            run.font.size = Pt(8.5)
-
-    # SECCIÓN 5: EVALUACIÓN DE COHERENCIA Y JUSTIFICACIÓN TÉCNICA (IE5, IE6, IE8)
-    h5 = doc.add_heading(level=1)
-    h5.paragraph_format.space_before = Pt(10)
-    h5.paragraph_format.space_after = Pt(4)
-    run_h5 = h5.add_run("5. Evaluación de Coherencia, Resultados y Justificación Técnica (IE5, IE6, IE8)")
-    run_h5.font.size = Pt(12)
-    run_h5.bold = True
-    run_h5.font.color.rgb = RGBColor(0, 51, 153)
-
-    p_eval = doc.add_paragraph()
-    p_eval.paragraph_format.space_after = Pt(4)
-    p_eval.add_run("Para evaluar la credibilidad técnica de la solución (IE6), se ejecutó una batería automatizada de pruebas sobre cinco casos canónicos organizacionales:")
-
-    # Tabla de Resultados Benchmark
-    table_bench = doc.add_table(rows=6, cols=5)
-    table_bench.alignment = WD_TABLE_ALIGNMENT.CENTER
-    b_headers = ["Caso Evaluado", "Consulta / RUT", "Dictamen Esperado / Obtenido", "Artículos Citados", "Fidelidad (Groundedness)"]
-    for i, h in enumerate(b_headers):
-        cell = table_bench.cell(0, i)
-        set_cell_background(cell, "003399")
-        p = cell.paragraphs[0]
-        run = p.add_run(h)
-        run.bold = True
-        run.font.color.rgb = RGBColor(255, 255, 255)
-        run.font.size = Pt(8.5)
-
-    bench_data = [
-        ("1. Transportes Biobío", "1.500 UF camión (RUT 76.123.456-K)", "Pre-Admisible / Leasing", "Art. 3, Art. 4, Art. 6 (FOGAPE 85%)", "100,0%"),
-        ("2. Panadería El Trigal", "800 UF Capital (RUT 76.999.888-4)", "No Admisible (DICOM > $500k)", "Art. 4 (Morosidad activa)", "100,0%"),
-        ("3. Constructora del Sur", "4.000 UF Línea (RUT 76.543.210-8)", "Derivación Comité Especial", "Art. 5, Art. 11 (Leverage > 3.2x)", "100,0%"),
-        ("4. Frutícola Express", "500 UF Capital (RUT 78.111.222-1)", "No Admisible (Antigüedad < 12m)", "Art. 3 (Iniciación en SII)", "100,0%"),
-        ("5. Consulta Normativa", "Requisitos subsidio FOGAPE", "Asesoría Informativa", "Art. 6 (Coberturas 85% y 70%)", "100,0%")
-    ]
-
-    for row_idx, data in enumerate(bench_data, start=1):
-        for col_idx, text in enumerate(data):
-            cell = table_bench.cell(row_idx, col_idx)
-            set_cell_background(cell, "F8FAFC" if row_idx % 2 == 0 else "FFFFFF")
-            p = cell.paragraphs[0]
-            p.paragraph_format.space_before = Pt(2)
-            p.paragraph_format.space_after = Pt(2)
-            run = p.add_run(text)
-            run.font.size = Pt(8)
-
-    p_metricas = doc.add_paragraph()
-    p_metricas.paragraph_format.space_before = Pt(4)
-    p_metricas.paragraph_format.space_after = Pt(6)
-    p_metricas.add_run("Resultados Globales de la Solución: ").bold = True
-    p_metricas.add_run("Precisión de dictamen: ")
-    p_metricas.add_run("100%").bold = True
-    p_metricas.add_run(" | Consistencia matemática de UF a $CLP: ")
-    p_metricas.add_run("100%").bold = True
-    p_metricas.add_run(" | Score promedio de Groundedness: ")
-    p_metricas.add_run("100%").bold = True
-    p_metricas.add_run(" | Latencia de inferencia: ")
-    p_metricas.add_run("0,0020 segundos").bold = True
-    p_metricas.add_run(". Adicionalmente, el repositorio incluye 11 pruebas automatizadas unitarias ejecutadas satisfactoriamente con unittest (test_rag_pipeline.py, test_external_tools.py, test_agent_policies.py); la evidencia de ejecución y capturas del dashboard se encuentran en docs/evidencias del repositorio.")
-
-    p_lim = doc.add_paragraph()
-    p_lim.paragraph_format.space_after = Pt(6)
-    p_lim.add_run("Limitaciones: ").bold = True
-    p_lim.add_run("las métricas anteriores se obtuvieron con el motor de síntesis local (modo sin OPENAI_API_KEY), que aplica las reglas del manual de forma determinista; con el LLM activo (gpt-4o-mini) la salida no es determinista y debe re-evaluarse con la misma batería. El índice TF-IDF es léxico, por lo que los puntajes de similitud son bajos (≈10%) y puede recuperar fragmentos poco específicos; se propone migrar a embeddings densos. Los datos del manual y de clientes son simulados.")
-
-    # SECCIÓN 6: CONCLUSIONES Y REFLEXIONES INDIVIDUALES (OBLIGATORIAS)
-    h6 = doc.add_heading(level=1)
-    h6.paragraph_format.space_before = Pt(10)
-    h6.paragraph_format.space_after = Pt(4)
-    run_h6 = h6.add_run("6. Conclusiones y Reflexiones Individuales Obligatorias")
-    run_h6.font.size = Pt(12)
-    run_h6.bold = True
-    run_h6.font.color.rgb = RGBColor(0, 51, 153)
-
-    p_conc = doc.add_paragraph()
-    p_conc.paragraph_format.space_after = Pt(4)
-    p_conc.add_run("Conclusiones del Proyecto: ").bold = True
-    p_conc.add_run("La implementación de la arquitectura PYME-Advisor demuestra que la combinación de agentes inteligentes, pipelines RAG semánticos y consumo de herramientas en tiempo real resuelve integralmente las deficiencias de los modelos generativos puros en entornos corporativos de alta regulación. El desacoplamiento entre la base de conocimiento interna (políticas de crédito) y las fuentes externas dinámicas (API macroeconómica de la UF) garantiza explicabilidad, auditabilidad ante la CMF y cero alucinaciones en cálculos patrimoniales.")
-
-    p_ref1 = doc.add_paragraph()
-    p_ref1.paragraph_format.space_after = Pt(4)
-    p_ref1.add_run("Reflexión Individual - Juan Serna: ").bold = True
-    p_ref1.add_run("Durante el desarrollo del proyecto, mi principal foco técnico fue estructurar la segmentación jerárquica de los documentos normativos de BancoEstado y validar el almacén vectorial. Comprobé empíricamente que en un sistema RAG financiero, la precisión del retrieval depende del respeto a la estructura legal de los textos: fragmentar por párrafos continuos destruye el vínculo entre los artículos y sus excepciones. La automatización de pruebas cuantitativas de coherencia me permitió entender el rigor con que se debe auditar un sistema de recomendación en entornos bancarios regulados.")
-
-    p_ref2 = doc.add_paragraph()
-    p_ref2.paragraph_format.space_after = Pt(4)
-    p_ref2.add_run("Reflexión Individual - Bárbara Bustamante: ").bold = True
-    p_ref2.add_run("Mi participación se centró en la orquestación agéntica y la integración de la API externa de indicadores económicos en tiempo real. Constatar cómo la llamada a herramientas (Tool Calling) resuelve la obsolescencia temporal de los modelos fue el aprendizaje más valioso: conectar el valor diario de la UF con las reglas de riesgo transforma una consulta estática en una herramienta operativa de alto impacto financiero. Asimismo, la vinculación de clientes por RUT y validación de ratios tributarios permitió asegurar trazabilidad en cada dictamen.")
-
-    p_ref3 = doc.add_paragraph()
-    p_ref3.paragraph_format.space_after = Pt(6)
-    p_ref3.add_run("Reflexión Individual - Nelson Carrasco: ").bold = True
-    p_ref3.add_run("Mi trabajo se concentró en la ingeniería de prompts, el diseño de guardrails negativos estrictos para evitar alucinaciones y la gestión de memoria conversacional. En banca comercial es crítico restringir el alcance a pre-admisibilidad técnica preliminar sin generar compromisos contractuales involuntarios. Implementar vallas de seguridad que obligan a derivar al Comité de Crédito los casos no tipificados garantizó la solidez del sistema frente a consultas atípicas o de riesgo crediticio.")
-
-    # SECCIÓN 7: INTEGRIDAD ACADÉMICA Y REFERENCIAS APA
-    h7 = doc.add_heading(level=1)
-    h7.paragraph_format.space_before = Pt(8)
-    h7.paragraph_format.space_after = Pt(4)
-    run_h7 = h7.add_run("7. Declaración de Uso de Inteligencia Artificial y Referencias (APA 7)")
-    run_h7.font.size = Pt(11)
-    run_h7.bold = True
-    run_h7.font.color.rgb = RGBColor(0, 51, 153)
-
-    p_etica = doc.add_paragraph()
-    p_etica.paragraph_format.space_after = Pt(4)
-    p_etica.add_run("Uso de IA: ").bold = True
-    p_etica.add_run("Conforme a las indicaciones de la evaluación, el equipo declara el uso de herramientas de IA generativa como apoyo: Claude (Anthropic, 2026) se utilizó para revisar la completitud del encargo frente a la pauta, mejorar la redacción del informe y del README, generar los diagramas Mermaid y automatizar la captura de evidencias de prueba. ")
-    r_pend = p_etica.add_run("[COMPLETAR: otras herramientas de IA usadas durante el desarrollo del código y para qué.]")
-    r_pend.font.highlight_color = WD_COLOR_INDEX.YELLOW
-    p_etica.add_run(" Todo el contenido generado fue revisado y validado por el equipo; las reflexiones individuales fueron redactadas por cada integrante sin apoyo de IA.")
-
-    p_ref = doc.add_paragraph()
-    p_ref.paragraph_format.space_after = Pt(2)
-    run_ref = p_ref.add_run(
-        "• Anthropic. (2026). Claude (versión Opus 5.5) [Modelo de lenguaje de gran tamaño]. https://claude.ai\n"
-        "• Comisión para el Mercado Financiero [CMF]. (s.f.). Recopilación Actualizada de Normas para Bancos. https://www.cmfchile.cl\n"
-        "• Lewis, P., et al. (2020). Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks. Advances in Neural Information Processing Systems (NeurIPS), 33, 9459–9474.\n"
-        "• Ministerio de Economía, Fomento y Turismo. (2024). Quinta Encuesta Longitudinal de Empresas (ELE). Gobierno de Chile. https://www.economia.gob.cl\n"
-        "• mindicador.cl. (s.f.). API de indicadores económicos diarios en Chile. https://mindicador.cl\n"
-        "• Shuster, K., Poff, S., Chen, M., Kiela, D., & Weston, J. (2021). Retrieval Augmentation Reduces Hallucination in Conversation. Findings of the Association for Computational Linguistics: EMNLP 2021, 3784–3803.\n"
-        "• Yao, S., et al. (2023). ReAct: Synergizing Reasoning and Acting in Language Models. International Conference on Learning Representations (ICLR)."
-    )
-    run_ref.font.size = Pt(8)
-    run_ref.font.color.rgb = RGBColor(80, 80, 80)
-
-    # Guardar documento
-    output_dir = os.path.dirname(os.path.abspath(output_path))
-    os.makedirs(output_dir, exist_ok=True)
+    os.makedirs(os.path.dirname(os.path.abspath(output_path)), exist_ok=True)
     doc.save(output_path)
-    print(f"Documento Word generado exitosamente en: {output_path}")
+    print(f"Documento Word generado en: {output_path}")
+
 
 if __name__ == "__main__":
     create_report_docx()

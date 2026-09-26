@@ -34,6 +34,10 @@ class EconomicIndicatorsTool:
             except Exception:
                 pass  # Si falla la lectura de caché, intentar llamada en vivo
 
+        # Si la API falló hace poco en esta sesión, no se reintenta (evita esperar el timeout en cada consulta)
+        if not force_refresh and self._cached_data and time.time() - self._cached_data["_ts"] < 300:
+            return self._cached_data["data"]
+
         # 2. Consultar API en vivo
         try:
             response = requests.get(self.api_url, timeout=6)
@@ -71,15 +75,29 @@ class EconomicIndicatorsTool:
                 return processed
         except Exception as e:
             # Fallback en caso de que la red falle o esté sin conexión
-            print(f"[Aviso] No se pudo conectar a la API en vivo ({e}). Usando valores de contingencia.")
+            print(f"[Aviso] No se pudo conectar a la API en vivo ({e.__class__.__name__}). Usando último valor disponible.")
 
-        # 3. Fallback con valores de contingencia
-        return {
-            "uf": {"nombre": "Unidad de Fomento", "valor": 41008.10, "fecha": "2026-09-24", "unidad": "Pesos Chilenos (CLP)"},
-            "dolar": {"nombre": "Dólar Observado", "valor": 959.39, "fecha": "2026-09-24", "unidad": "Pesos Chilenos (CLP)"},
-            "utm": {"nombre": "Unidad Tributaria Mensual", "valor": 71721.00, "fecha": "2026-09-24", "unidad": "Pesos Chilenos (CLP)"},
-            "fuente": "Valores de contingencia normativos BancoEstado"
-        }
+        # 3a. Fallback: último valor real guardado en caché (aunque esté vencido)
+        fallback = None
+        if os.path.exists(CACHE_FILE):
+            try:
+                with open(CACHE_FILE, "r", encoding="utf-8") as f:
+                    fallback = json.load(f).get("data")
+                fecha = str(fallback["uf"].get("fecha", ""))[:10]
+                fallback["fuente"] = f"mindicador.cl (último valor en caché, {fecha}; API sin conexión)"
+            except Exception:
+                fallback = None
+
+        # 3b. Fallback final: valores de contingencia fijos
+        if not fallback:
+            fallback = {
+                "uf": {"nombre": "Unidad de Fomento", "valor": 41008.10, "fecha": "2026-09-24", "unidad": "Pesos Chilenos (CLP)"},
+                "dolar": {"nombre": "Dólar Observado", "valor": 959.39, "fecha": "2026-09-24", "unidad": "Pesos Chilenos (CLP)"},
+                "utm": {"nombre": "Unidad Tributaria Mensual", "valor": 71721.00, "fecha": "2026-09-24", "unidad": "Pesos Chilenos (CLP)"},
+                "fuente": "Valores de contingencia locales (API sin conexión)"
+            }
+        self._cached_data = {"_ts": time.time(), "data": fallback}
+        return fallback
 
     def convert_uf_to_clp(self, monto_uf: float) -> Dict[str, Any]:
         """Convierte un monto en UF a pesos chilenos según la UF del día."""

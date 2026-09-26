@@ -11,7 +11,7 @@
 
 * **Nombre de la Organización:** BancoEstado Microempresas / División de Financiamiento PYME (*Contexto simulado basado en el ecosistema bancario público-privado de Chile*).
 * **Rubro:** Banca Comercial, Servicios Financieros y Apoyo al Desarrollo Productivo PYME.
-* **Tamaño:** Gran Institución Financiera (alcance nacional en Chile, más de 500 sucursales y más de 800.000 clientes micro y pequeñas empresas).
+* **Tamaño:** Gran Institución Financiera (alcance nacional en Chile, con atención a micro y pequeñas empresas en todas las regiones).
 * **Contexto General:** BancoEstado Microempresas es el principal articulador financiero de inclusión productiva en Chile. Su misión es brindar acceso a financiamiento, capital de trabajo y leasing a micro y pequeñas empresas, operando bajo la supervisión de la Comisión para el Mercado Financiero (CMF) y actuando como entidad canalizadora de fondos de garantía estatal como FOGAPE (Fondo de Garantía para Pequeños Empresarios) y programas CORFO.
 
 ---
@@ -19,11 +19,11 @@
 ### 2. Identificación y Descripción del Problema / Desafío
 
 * **Descripción del Desafío:** 
-  Actualmente, las PYMEs que solicitan financiamiento experimentan un proceso de pre-evaluación crediticia lento, fragmentado y altamente dependiente de ejecutivos de cuentas en sucursales. Los ejecutivos deben consultar manualmente extensos manuales normativos de políticas de riesgo (más de 150 páginas de condiciones de antigüedad, ratios de endeudamiento DTI, matrices de garantías y exclusiones por morosidad comercial), al mismo tiempo que deben consultar fuentes externas dinámicas (el valor de la Unidad de Fomento - UF al día para la conversión de balances, la tasa de política monetaria y los topes de Tasa Máxima Convencional regulados por la CMF).
+  Actualmente, las PYMEs que solicitan financiamiento experimentan un proceso de pre-evaluación crediticia lento, fragmentado y altamente dependiente de ejecutivos de cuentas en sucursales. Los ejecutivos deben consultar manualmente extensos manuales normativos de políticas de riesgo ( condiciones de antigüedad, ratios de endeudamiento DTI, matrices de garantías y exclusiones por morosidad comercial), al mismo tiempo que deben consultar fuentes externas dinámicas (el valor de la Unidad de Fomento - UF al día para la conversión de balances, la tasa de política monetaria y los topes de Tasa Máxima Convencional regulados por la CMF).
 * **Impacto en la Organización:**
-  1. **Tiempos de Respuesta Prolongados:** El proceso de pre-calificación inicial toma entre 7 y 10 días hábiles por cliente, generando deserción de prospectos hacia entidades informales o fintechs no reguladas.
+  1. **Tiempos de Respuesta Prolongados:** El proceso de pre-calificación inicial puede tomar varios días hábiles por cliente (supuesto de diseño del equipo: 7 a 10 días), generando deserción de prospectos hacia entidades informales o fintechs no reguladas.
   2. **Inconsistencias y Errores Humanos:** Ejecutivos novatos aplican criterios de riesgo desactualizados o no identifican la elegibilidad de subsidios estatales de garantía (como FOGAPE Chile Apoya), derivando en rechazos indebidos o aprobaciones fuera de política.
-  3. **Sobrecarga Operativa:** Más del 60% de las consultas atendidas en mesón corresponden a preguntas repetitivas sobre requisitos de admisibilidad básica que podrían ser resueltas de forma autónoma con trazabilidad regulatoria.
+  3. **Sobrecarga Operativa:** Una parte relevante de las consultas atendidas en mesón corresponde (supuesto del equipo, a validar con datos de la organización) a preguntas repetitivas sobre requisitos de admisibilidad básica que podrían ser resueltas de forma autónoma con trazabilidad regulatoria.
 
 ---
 
@@ -33,8 +33,8 @@
   Diseñar e implementar una solución de software inteligente basada en un agente conversacional LLM con arquitectura RAG (Retrieval-Augmented Generation) y herramientas de consulta externa, que automatice la pre-evaluación y asesoría crediticia para clientes PYME de manera confiable, explicable y alineada a las políticas institucionales.
 * **Objetivos Específicos:**
   1. **Reducir el Tiempo de Orientación y Pre-filtro:** Pasar de un tiempo medio de atención de 7 días a menos de 2 minutos para la entrega de un dictamen preliminar fundamentado.
-  2. **Garantizar Cero Alucinaciones en Políticas de Riesgo (Groundedness > 95%):** Diseñar un pipeline RAG sobre el Manual de Políticas de Crédito que asegure que cada recomendación cite el artículo o acápite normativo correspondiente.
-  3. **Integrar Datos Externos en Tiempo Real:** Incorporar una herramienta agéntica (*Tool Calling*) conectada a la API oficial de indicadores económicos de Chile (mindicador.cl / CMF) para resolver la indexación dinámica en UF, Dólar y UTM con exactitud matemática al milisegundo.
+  2. **Minimizar Alucinaciones en Políticas de Riesgo (Groundedness de citas ≥ 95%):** Diseñar un pipeline RAG sobre el Manual de Políticas de Crédito que asegure que cada recomendación cite el artículo o acápite normativo correspondiente.
+  3. **Integrar Datos Externos en Tiempo Real:** Incorporar una herramienta agéntica (*Tool Calling*) conectada a la API pública de indicadores económicos mindicador.cl (valores del Banco Central de Chile) para resolver la indexación dinámica en UF, Dólar y UTM con exactitud matemática.
   4. **Personalizar el Asesoramiento:** Integrar la consulta a registros internos de clientes (RUT, facturación histórica, endeudamiento previo) para sugerir el producto más idóneo (Crédito Capital de Trabajo, Leasing Operativo o Factoring).
 
 ---
@@ -48,10 +48,10 @@
    * Leasing Inmobiliario y Maquinaria (hasta 60 meses con opción de compra).
    * Línea de Sobregiro Operacional.
    * Factoring con Cesión Electrónica de Facturas.
-3. **Base de Datos Simulada de Empresas PYME (`clientes_pyme.json` / SQLite):** Contiene RUT, razón social, giro comercial, facturación anual (en UF), score de comportamiento histórico interno y vigencia de estatutos.
+3. **Base de Datos Simulada de Empresas PYME (`clientes_pyme_simulados.json`):** Contiene RUT, razón social, giro comercial, facturación anual (en UF), score de comportamiento histórico interno y vigencia de estatutos.
 
 #### B. Fuentes Externas (APIs y Normativa Pública en Vivo)
-1. **API Pública de Indicadores Económicos de Chile (mindicador.cl / CMF):**
+1. **API pública de indicadores económicos (mindicador.cl, valores del Banco Central de Chile):**
    * Endpoint REST en tiempo real que proporciona los valores de la UF (Unidad de Fomento), UTM (Unidad Tributaria Mensual) y Dólar Observado.
    * Permite realizar la conversión fidedigna de montos solicitados en pesos chilenos a UF del día hábil respectivo.
 2. **Normativa CMF sobre Tasa Máxima Convencional (TMC):**
@@ -90,7 +90,7 @@
 
 ### 7. Referencias y Marco Teórico (Normativa APA 7)
 
-* Comisión para el Mercado Financiero [CMF]. (2025). *Compendio de Normas Contables y de Crédito para Instituciones Bancarias*. CMF Chile. https://www.cmfchile.cl
+* Comisión para el Mercado Financiero. (s.f.). *Recopilación Actualizada de Normas de Bancos (RAN)*. https://www.cmfchile.cl/portal/principal/613/w3-propertyvalue-29580.html
 * Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., Küttler, H., Lewis, M., Yih, W., Rocktäschel, T., Riedel, S., & Kiela, D. (2020). Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks. *Advances in Neural Information Processing Systems (NeurIPS 2020)*, 33, 9459–9474.
-* Ministerio de Economía, Fomento y Turismo de Chile. (2024). *Reglamento del Fondo de Garantía para Pequeños Empresarios (FOGAPE)*. Biblioteca del Congreso Nacional de Chile. https://www.bcn.cl
+* Decreto Ley N° 3.472 de 1980. Crea el Fondo de Garantía para Pequeños Empresarios. Biblioteca del Congreso Nacional de Chile. https://www.bcn.cl/leychile
 * Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2023). ReAct: Synergizing Reasoning and Acting in Language Models. *International Conference on Learning Representations (ICLR 2023)*.

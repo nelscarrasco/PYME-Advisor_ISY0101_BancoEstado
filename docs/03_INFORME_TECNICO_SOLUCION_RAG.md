@@ -1,159 +1,119 @@
-# INFORME TÉCNICO: DISEÑO E IMPLEMENTACIÓN DE SOLUCIÓN AGÉNTICA CON LLM Y PIPELINE RAG
-**Asignatura:** ISY0101 - Ingeniería de Soluciones con IA  
-**Institución:** Duoc UC  
-**Evaluación:** Evaluación Parcial N°1 (Encargo y Presentación)  
-**Proyecto:** PYME-Advisor: Sistema Agéntico RAG para Asesoría y Pre-Evaluación de Crédito y Garantías  
-**Organización Seleccionada:** BancoEstado Microempresas & PYME  
-**Integrantes:** Juan Serna, Bárbara Bustamante, Nelson Carrasco  
-**Fecha:** Septiembre 2026  
+> Versión Markdown del informe técnico. El documento oficial entregado es `docs/INFORME_TECNICO_SOLUCION_RAG.docx` (se genera con `python generate_report_docx.py`).
 
----
+ISY0101 - INGENIERÍA DE SOLUCIONES CON IA | DUOC UC
+EVALUACIÓN PARCIAL N°1 - ENCARGO
 
-## 1. ANÁLISIS DEL CASO ORGANIZACIONAL Y REQUERIMIENTOS (IE1)
+**PYME-Advisor: Agente con LLM y RAG para la Pre-Evaluación Crediticia de PYMEs en BancoEstado Microempresas**
 
-### 1.1. Contexto y Diagnóstico del Problema
-En Chile, las micro y pequeñas empresas (PYMEs) constituyen el 98,6% del tejido empresarial formal y generan más del 53% del empleo asalariado (Ministerio de Economía, 2024). A pesar de su rol estructural, el acceso al financiamiento formal presenta una tasa de fricción y abandono superior al 45% en la banca tradicional. En **BancoEstado Microempresas**, principal articulador financiero de inclusión productiva del país, el proceso de pre-evaluación crediticia inicial enfrenta un cuello de botella crítico:
-1. **Sobrecarga y Tiempos de Respuesta Prolongados:** El levantamiento manual de antecedentes tributarios y la contrastación contra extensas normativas internas toma entre 7 y 10 días hábiles por prospecto.
-2. **Asimetría de Información y Complejidad Normativa:** Los ejecutivos comerciales deben aplicar manualmente un manual de riesgo de más de 150 páginas (requisitos de antigüedad en Primera Categoría del SII, límites de apalancamiento *leverage*, restricciones por protestos en el Boletín Comercial y elegibilidad para fondos de fianza estatal como FOGAPE).
-3. **Desfase Temporal en Cálculos Indexados:** Los créditos e instrumentos bancarios en Chile se pactan predominantemente en Unidades de Fomento (UF), cuyo valor en pesos chilenos ($CLP) varía diariamente según la inflación calculada por el Banco Central de Chile, generando errores aritméticos cuando los ejecutivos calculan conversiones con planillas desactualizadas.
+Integrantes: Juan Serna, Bárbara Bustamante, Nelson Carrasco | Fecha: 25 de septiembre de 2026 | Repositorio: https://github.com/nelscarrasco/PYME-Advisor_ISY0101_BancoEstado
 
-### 1.2. Objetivos de la Intervención con Inteligencia Artificial
-* **Objetivo General:** Diseñar, implementar y evaluar una solución de software inteligente basada en un agente autónomo LLM con arquitectura RAG (Retrieval-Augmented Generation) y herramientas externas en tiempo real, que automatice la pre-evaluación y asesoramiento crediticio para PYMEs, garantizando 100% de apego a las políticas de riesgo y citabilidad normativa.
-* **Objetivos Específicos:**
-  1. Reducir la latencia del dictamen preliminar de admisibilidad de 7 días hábiles a menos de 2 segundos.
-  2. Implementar un pipeline RAG sobre la base documental institucional con un índice de fidelidad (*Groundedness*) superior al 95%, erradicando alucinaciones en condiciones contractuales.
-  3. Integrar mediante llamadas a herramientas (*Tool Calling*) la API oficial de indicadores económicos de Chile (mindicador.cl / CMF) para resolver en vivo la conversión de UF a pesos.
-  4. Personalizar el dictamen recomendando el producto financiero idóneo (Capital de Trabajo, Leasing o Factoring) según el rubro y destino de fondos.
 
----
+## 1. Análisis del Caso Organizacional y Requerimientos (IE1)
+**Organización.** BancoEstado Microempresas es la filial de BancoEstado orientada al financiamiento de micro y pequeñas empresas en todo Chile, con productos de capital de trabajo, leasing y factoring y acceso a garantías estatales como FOGAPE. Las MiPymes superan 1,2 millones de empresas, representan el 98,5% de las empresas formales del país y concentran el 48% del empleo (Ministerio de Economía, Fomento y Turismo, 2026), por lo que la velocidad y consistencia con que se evalúa su acceso al crédito tiene impacto directo.
 
-## 2. FORMULACIÓN Y JUSTIFICACIÓN DE PROMPTS OPTIMIZADOS (IE2)
+**Problema.** La pre-evaluación inicial de una solicitud exige que el ejecutivo cruce manualmente tres fuentes: (a) el manual interno de políticas de riesgo (antigüedad, morosidad, endeudamiento, garantías y atribuciones), (b) los antecedentes del cliente y (c) indicadores que cambian a diario, como la UF, en la que se expresan montos y tramos. Esto produce demoras, criterios dispares entre ejecutivos y errores de conversión UF–CLP. Un LLM genérico no resuelve el problema: desconoce las políticas internas, no conoce la UF del día y puede inventar requisitos.
 
-El diseño del prompt del sistema (*System Prompt*) y de las plantillas operativas se fundamenta en principios avanzados de **Prompt Engineering**, adoptando el patrón **Role-Based Reasoning** junto con **Strict Guardrails** (vallas de seguridad) y aprendizaje contextual en pocas muestras (**Few-Shot Prompting**):
+**Alcance.** La organización es real, pero el Manual de Políticas de Crédito (11 artículos), el Catálogo de Productos (4 secciones) y la base de 5 clientes son documentos simulados construidos por el equipo; no son normativa oficial de BancoEstado.
 
-```markdown
-Eres "PYME-Advisor", el Agente Consultor Experto en Riesgo Crediticio de BancoEstado Microempresas.
-Tu objetivo es pre-evaluar solicitudes comerciales de PYMEs con apego irrestricto al Manual de Crédito.
-REGLA 1 (Fidelidad Normativa): Basa tus conclusiones EXCLUSIVAMENTE en el contexto normativo provisto.
-Prohibido inventar requisitos o plazos. Si un caso no está tipificado, deriva al Comité Especial (Art. 11).
-REGLA 2 (Trazabilidad): Cada dictamen DEBE citar el artículo correspondiente [Manual de Crédito, Art. X].
-REGLA 3 (Cálculo Externo): Multiplica todo monto en UF por el valor provisto por la API económica externa.
-REGLA 4 (Formato): Entrega el informe estructurado en 5 puntos: 1) Dictamen, 2) Normativa, 3) Garantías FOGAPE, 4) Producto Recomendado, 5) Próximos Pasos.
+**Requerimientos y objetivos medibles:**
+
+- **R1 Dictamen preliminar trazable:** estado PRE-ADMISIBLE / NO ADMISIBLE / COMITÉ en menos de 2 s, sin emitir aprobaciones definitivas.
+- **R2 Fidelidad normativa:** 100% de las citas del dictamen respaldadas por un fragmento recuperado del manual (meta mínima 95%).
+- **R3 Datos externos vigentes:** conversión UF→CLP exacta con el valor del día obtenido por API, con continuidad si la API falla.
+- **R4 Control de riesgo:** derivación automática al Comité en los supuestos del Art. 11 y respeto al secreto bancario y a la Ley 19.628 (sólo se envían al modelo los campos necesarios del cliente).
+
+## 2. Formulación de Prompts (IE2)
+El prompt se ensambla en src/agent/prompts.py en bloques ordenados: (1) system prompt con rol y reglas, (2) ejemplo few-shot de un dictamen completo, (3) memoria de sesión, (4) indicadores de la API, (5) perfil del cliente, (6) fragmentos RAG con fuente y relevancia, (7) resultado del motor de reglas y (8) la consulta. Extracto del system prompt:
+
+```text
+Eres "PYME-Advisor", Agente Consultor de Riesgo Crediticio de BancoEstado Microempresas.
+1. FIDELIDAD: basa tus conclusiones EXCLUSIVAMENTE en el contexto provisto; PROHIBIDO inventar requisitos, plazos o montos.
+   Si el caso no está en el manual: "debe elevarse a evaluación especial".
+2. TRAZABILIDAD: toda afirmación normativa cita [Manual de Crédito, Art. X] o [Catálogo de Productos, Sección N].
+3. DATOS EXTERNOS: convierte todo monto UF a CLP con el valor de la API y cita la fuente.
+4. ESTADO: debe coincidir con el MOTOR DE REGLAS; explícalo, no lo recalcules. Nunca emitas aprobación definitiva.
+5. FORMATO: 1) Dictamen 2) Fundamentación 3) Garantías/FOGAPE 4) Producto 5) Documentación.
 ```
 
-### Justificación Técnica de las Decisiones de Prompting:
-* **Asignación de Rol Experto:** Establece el marco semántico, el registro lingüístico formal-bancario y el umbral de prudencia financiera requerido por la Comisión para el Mercado Financiero (CMF).
-* **Guardrails Negativos Explícitos:** Restringe el espacio generativo del LLM para evitar comprometer legalmente al banco con "aprobaciones definitivas", catalogando todo dictamen como "Pre-Admisibilidad Técnica Preliminar".
-* **Few-Shot Examples:** La inclusión de casos canónicos previos (aprobación con FOGAPE y rechazo por DICOM) reduce la varianza estocástica del modelo, garantizando que el formato Markdown de salida sea uniforme y parseable programáticamente.
+**Justificación.** El rol fija el registro y el umbral de prudencia bancaria. Las restricciones negativas y la cláusula de escape ("elevar a evaluación especial") reducen el espacio de respuesta a lo que el contexto respalda. La cita obligatoria con formato fijo permite verificar automáticamente cada afirmación (sección 5). Entregar al modelo el resultado del motor de reglas evita que el LLM decida el estado crediticio, que es la parte con mayor riesgo regulatorio. El few-shot y la temperatura 0,1 estabilizan el formato de 5 secciones.
 
----
 
-## 3. DISEÑO E IMPLEMENTACIÓN DEL PIPELINE RAG Y FUENTES (IE3)
+## 3. Diseño e Implementación del Pipeline RAG (IE3)
+- **Fuentes internas:** Manual de Crédito y Catálogo (Markdown) segmentados por encabezado y artículo (chunker.py), generando 27 fragmentos con metadatos de fuente, título y artículo/sección; base de clientes JSON consultada por RUT (ClientLookupTool).
+- **Fuente externa:** API pública mindicador.cl (valores del Banco Central de Chile) para UF, dólar y UTM (EconomicIndicatorsTool), con caché de 1 hora; si la API falla usa el último valor real guardado y, en último caso, valores de contingencia, informando siempre la fuente usada.
+- **Índice y búsqueda:** TF-IDF con n-gramas 1–3 y similitud coseno (vector_store.py). La consulta se descompone en sub-consultas por dimensión de riesgo (segmento, antigüedad, morosidad, endeudamiento, FOGAPE, garantías, producto, documentos y comité), se recupera el top-1/2 de cada una y se unen sin duplicados.
+![Figura 1](diagramas/flujo_rag.png)
 
-El pipeline de Recuperación Aumentada por Generación combina fuentes internas estáticas con fuentes dinámicas externas mediante un flujo agéntico desacoplado:
+*Figura 1. Flujo de información por consulta: herramientas internas y externas, motor de reglas, recuperación multi-consulta, generación y verificación.*
 
-```
-[Usuario/Ejecutivo] 
-       │ (1. Consulta Natural)
-       ▼
-[Orquestador Agéntico (agent_core.py)] ──────► [Extractor de Entidades: RUT, Monto, Giro]
-       │                                                      │
-       ├───────────────┬──────────────────────────────────────┤
-       ▼               ▼                                      ▼
-[Tool Externa]   [Tool Interna]                       [Vector Store RAG]
-API mindicador   Base Clientes                        Manual de Crédito 2026
-(UF / Dólar)     (RUT, DICOM, Balance)                (Art. 1 al 11 + Productos)
-       │               │                                      │
-       └───────────────┼──────────────────────────────────────┘
-                       ▼
-            [Prompt Enriquecido] ──► [Motor de Inferencia LLM] ──► [Dictamen Fiel 5 Puntos]
-```
 
-### 3.1. Integración de Fuentes Internas
-* **Documentación Normativa:** Manual Institucional de Políticas de Crédito PYME (11 Artículos) y Catálogo de 4 Productos Financieros.
-* **Segmentación Semántica Jerárquica (*Semantic Chunking*):** En lugar de dividir el texto por ventanas fijas de caracteres (lo que fragmentaría artículos legales), se diseñó un algoritmo que detecta encabezados Markdown (`##`, `###`) y etiquetas de artículos (`Artículo X:`), generando 26 fragmentos con preservación contextual completa.
-* **Indexación y Almacén Vectorial:** Se implementó una matriz de características léxico-semánticas con ponderación **TF-IDF sublineal y n-gramas (1 a 3)** combinada con similitud de coseno, lo que permite latencias de recuperación de **0,002 segundos**, garantizando máxima precisión en terminología financiera especializada.
-* **Base de Clientes Interna:** Repositorio estructurado JSON/SQLite que simula el registro de clientes del banco, permitiendo cruzar instantáneamente el RUT con el historial de ventas y morosidades comerciales.
+## 4. Arquitectura de la Solución (IE4)
+![Figura 2](diagramas/arquitectura.png)
 
-### 3.2. Integración de Fuentes Externas en Tiempo Real
-* **API Oficial de Indicadores Económicos (`mindicador.cl` / Banco Central de Chile):** Conexión vía HTTP REST al endpoint oficial para obtener el valor de la UF al día ($41.008,10 CLP), Dólar Observado y UTM.
-* **Caché y Resiliencia Operacional:** El módulo implementa almacenamiento en caché con tiempo de vida (TTL = 1 hora) y valores normativos de contingencia para mantener la continuidad operativa ante cortes imprevistos de enlace externo.
+*Figura 2. Arquitectura por capas de PYME-Advisor (fuente editable: docs/diagramas/arquitectura.mmd).*
 
----
+| Módulo | Archivo | Función en la arquitectura |
+|---|---|---|
+| Interfaz | app.py, web_server.py | CLI y dashboard FastAPI con panel de auditoría (herramientas, fragmentos, guardrail). |
+| Orquestador | agent_core.py | Extrae RUT/monto, invoca herramientas, recupera, genera y verifica la salida. |
+| Motor de reglas | policy_engine.py | Aplica los Art. 1, 3, 4, 5 y 11 y fija el estado preliminar de forma determinista. |
+| Recuperación | chunker.py, vector_store.py | Segmentación por artículo e índice TF-IDF con búsqueda multi-consulta. |
+| Herramientas | client_lookup.py, economic_indicators.py | Base interna de clientes y API de indicadores con caché y respaldo. |
+| Contexto | context_manager.py | Memoria de sesión (5 turnos) y cliente activo para preguntas de seguimiento. |
+| Generación | prompts.py + gpt-4o-mini | LLM si existe OPENAI_API_KEY; si no, motor de síntesis local que redacta sólo con artículos recuperados. |
+| Guardrail de salida | agent_core.validate_citations | Marca toda cita sin fragmento de respaldo y corrige un estado que contradiga al motor de reglas. |
 
-## 4. ARQUITECTURA DE LA SOLUCIÓN Y CONTROL DE CONTEXTO (IE4, IE7)
 
-La arquitectura modular implementa el patrón **Separation of Concerns (SoC)** y comprende cinco componentes principales:
+## 5. Evaluación, Decisiones de Diseño y Resultados (IE5)
+La batería src/evaluation/evaluate_coherence.py ejecuta 7 casos con resultado esperado conocido y mide la coherencia entre los datos recuperados y la respuesta:
 
-```
-┌─────────────────────────────────────────────────────────────────────────────────┐
-│                           ARQUITECTURA DEL SISTEMA PYME-ADVISOR                  │
-├────────────────────────┬───────────────────────────────┬────────────────────────┤
-│ CAPA DE INTERFAZ       │ CAPA DE ORQUESTACIÓN Y LÓGICA │ CAPA DE PERSISTENCIA   │
-│ - CLI Interactiva      │ - Agent Core (Enrutador)      │ - Vector Store Interno │
-│ - Dashboard Web        │ - Extractor de Entidades      │ - Cache Indicadores    │
-│   (FastAPI + HTML5/JS) │ - Context & Session Manager   │ - BD Clientes (JSON)   │
-│                        │ - Guardrail Enforcement       │                        │
-└────────────────────────┴───────────────────────────────┴────────────────────────┘
-```
+| Caso | Esperado = Obtenido | Artículos requeridos (recuperados) | Citas respaldadas |
+|---|---|---|---|
+| 1. Transportes Biobío, leasing 1.500 UF | PRE-ADMISIBLE | 3, 4, 5, 6, 9 (100%) | 100% |
+| 2. Panadería El Trigal, 800 UF, DICOM $1,25 M | NO ADMISIBLE | 4 (100%) | 100% |
+| 3. Constructora del Sur, leverage 3,4x, DSCR 1,1 | COMITÉ | 5, 11 (100%) | 100% |
+| 4. Frutícola Express, 5 meses | NO ADMISIBLE | 3 (100%) | 100% |
+| 5. TecnoAgro, capital de trabajo 600 UF | PRE-ADMISIBLE | 3, 4, 5, 6, 8 (100%) | 100% |
+| 6. TecnoAgro, 12.000 UF | COMITÉ | 11 (100%) | 100% |
+| 7. Consulta general FOGAPE | INFORMACIÓN GENERAL | 6 (100%) | 100% |
 
-* **Gestor de Contexto Conversacional (`context_manager.py`):** Mantiene una memoria de corto plazo (*Sliding Window Memory* de 5 turnos) que retiene el cliente activo y su RUT para responder consultas de seguimiento (ej. *"¿Y qué documentos debo llevar?"*), evitando re-procesamientos redundantes y previniendo la contaminación de la ventana de contexto.
-* **Interfaces Disponibles:** Se construyó una interfaz interactiva de consola (CLI) para evaluación técnica y un **Dashboard Web interactivo con FastAPI** que permite a los evaluadores monitorear en vivo la UF del día, los fragmentos normativos recuperados y el tiempo de respuesta.
+**Resultados:** precisión de dictamen 100%; recall de recuperación 100% frente a 17,1% de la línea base que busca sólo con la consulta original (top-3); groundedness de citas 100%; consistencia UF→CLP 100%; latencia bajo 0,3 s por consulta. Además, 17 pruebas unitarias (unittest) aprobadas. Logs y capturas en docs/evidencias.
 
----
+| Decisión | Alternativa descartada | Justificación |
+|---|---|---|
+| Motor de reglas + LLM | Que el LLM decida el estado | La decisión crediticia debe ser auditable y reproducible; el LLM explica y el motor decide. |
+| Descomposición en sub-consultas | Búsqueda única top-k | Una consulta cubre varias reglas; medido: recall 17,1% → 100%. |
+| TF-IDF 1–3 gramas | Embeddings densos | Corpus pequeño y terminología exacta (DICOM, FOGAPE, UF); sin costo ni dependencia externa. Se revisará si crece el corpus. |
+| Chunking por artículo | Ventanas fijas de caracteres | Una regla y su excepción quedan en el mismo fragmento y la cita al artículo es inequívoca. |
+| Verificación de citas | Confiar en el prompt | El prompt no garantiza fidelidad; la verificación la mide y la hace visible al ejecutivo. |
+| Caché + último valor real | Consultar la API siempre | Evita la latencia y la caída del servicio sin inventar valores. |
 
-## 5. EVALUACIÓN DE COHERENCIA, PRUEBAS Y JUSTIFICACIÓN TÉCNICA (IE5, IE6, IE8)
+**Limitaciones:** las métricas se midieron con el motor de síntesis local (sin OPENAI_API_KEY); con el LLM activo la redacción no es determinista y debe re-evaluarse con la misma batería. Los puntajes de similitud TF-IDF son moderados (0,2–0,6). Los documentos y clientes son simulados.
 
-### 5.1. Batería de Pruebas y Métricas Cuantitativas RAG (IE6)
-Para asegurar la credibilidad del agente ante la auditoría bancaria, se ejecutó una batería estandarizada (*Benchmark Suite*) sobre cinco casos reales de prueba:
 
-| Caso de Prueba Organizacional | Consulta del Solicitante | Dictamen Esperado | Dictamen Agente | Citas Normativas Validadas | Coherencia UF/CLP |
-| :--- | :--- | :--- | :--- | :--- | :---: |
-| **Caso 1: Transportes Biobío** | 1.500 UF camión tolva (RUT 76.123.456-K) | Pre-Admisible (Leasing) | Pre-Admisible (Leasing) | Art. 3, Art. 4, Art. 6 (FOGAPE 85%) | 100% Exacto |
-| **Caso 2: Panadería El Trigal** | 800 UF Capital de Trabajo (RUT 76.999.888-4) | No Admisible (DICOM) | No Admisible (DICOM) | Art. 4 (Deuda > $500.000) | 100% Exacto |
-| **Caso 3: Constructora del Sur** | 4.000 UF Ampliación (RUT 76.543.210-8) | Derivación Comité Art. 11 | Derivación Comité Art. 11 | Art. 5, Art. 11 (Leverage > 3.2x) | 100% Exacto |
-| **Caso 4: Frutícola Express** | 500 UF Capital Trabajo (RUT 78.111.222-1) | No Admisible (Antigüedad) | No Admisible (Antigüedad) | Art. 3 (< 12 meses operación) | 100% Exacto |
-| **Caso 5: Consulta Abierta** | Requisitos y cobertura FOGAPE general | Asesoría Informativa | Asesoría Informativa | Art. 6 (Tramos 85% y 70%) | N/A |
+## 6. Conclusiones y Reflexiones Individuales
+**Conclusiones del proyecto:** La implementación de la arquitectura PYME-Advisor demuestra que la combinación de agentes inteligentes, pipelines RAG semánticos y consumo de herramientas en tiempo real resuelve integralmente las deficiencias de los modelos generativos puros en entornos corporativos de alta regulación. El desacoplamiento entre la base de conocimiento interna (políticas de crédito) y las fuentes externas dinámicas (API macroeconómica de la UF) garantiza explicabilidad, auditabilidad ante la CMF y cero alucinaciones en cálculos patrimoniales.
 
-### 5.2. Resultados Globales del Benchmark
-* **Precisión de Dictamen (Decision Accuracy):** **100,0%** de acierto en los veredictos de riesgo.
-* **Fidelidad Normativa (*Groundedness Score*):** **100,0%**, sin registro de alucinaciones en plazos o requisitos.
-* **Recuperación de Citaciones (*Citation Recall*):** **100,0%**, citando fielmente los artículos específicos en cada caso.
-* **Consistencia Matemática (UF a CLP):** **100,0%**, validado contra el producto del valor oficial de la API de la UF.
-* **Latencia Media de Respuesta:** **0,0020 segundos** por dictamen completo.
-* **Evidencia de Pruebas de Software:** 11 pruebas unitarias y de integración automatizadas ejecutadas con `unittest` (`test_rag_pipeline.py`, `test_external_tools.py`, `test_agent_policies.py`), todas con resultado satisfactorio (`Ran 11 tests in 0.027s - OK`).
+**Reflexión individual - Juan Serna:** Durante el desarrollo del proyecto, mi principal foco técnico fue estructurar la segmentación jerárquica de los documentos normativos de BancoEstado y validar el almacén vectorial. Comprobé empíricamente que en un sistema RAG financiero, la precisión del retrieval depende del respeto a la estructura legal de los textos: fragmentar por párrafos continuos destruye el vínculo entre los artículos y sus excepciones. La automatización de pruebas cuantitativas de coherencia me permitió entender el rigor con que se debe auditar un sistema de recomendación en entornos bancarios regulados.
 
----
+**Reflexión individual - Bárbara Bustamante:** Mi participación se centró en la orquestación agéntica y la integración de la API externa de indicadores económicos en tiempo real. Constatar cómo la llamada a herramientas (Tool Calling) resuelve la obsolescencia temporal de los modelos fue el aprendizaje más valioso: conectar el valor diario de la UF con las reglas de riesgo transforma una consulta estática en una herramienta operativa de alto impacto financiero. Asimismo, la vinculación de clientes por RUT y validación de ratios tributarios permitió asegurar trazabilidad en cada dictamen.
 
-## 6. CONCLUSIONES Y REFLEXIONES INDIVIDUALES (OBLIGATORIAS)
+**Reflexión individual - Nelson Carrasco:** Mi trabajo se concentró en la ingeniería de prompts, el diseño de guardrails negativos estrictos para evitar alucinaciones y la gestión de memoria conversacional. En banca comercial es crítico restringir el alcance a pre-admisibilidad técnica preliminar sin generar compromisos contractuales involuntarios. Implementar vallas de seguridad que obligan a derivar al Comité de Crédito los casos no tipificados garantizó la solidez del sistema frente a consultas atípicas o de riesgo crediticio.
 
-### 6.1. Conclusiones Técnicas del Proyecto
-La implementación de la arquitectura **PYME-Advisor** demuestra que la combinación de agentes inteligentes, pipelines RAG semánticos y consumo de herramientas en tiempo real resuelve integralmente las deficiencias de los modelos generativos puros en entornos corporativos de alta regulación. El desacoplamiento entre la base de conocimiento interna (políticas de crédito) y las fuentes externas dinámicas (API macroeconómica de la UF) garantiza explicabilidad, auditabilidad ante la CMF y cero alucinaciones en cálculos patrimoniales.
 
-### 6.2. Reflexión Individual - Juan Serna
-> Durante el desarrollo de este encargo, mi principal contribución técnica estuvo centrada en el diseño del pipeline de recuperación RAG y la estructuración jerárquica de los documentos normativos de BancoEstado. Comprendí que el éxito de una solución RAG en el ámbito financiero no depende exclusivamente del tamaño del modelo de lenguaje, sino críticamente de la calidad de la segmentación de datos (*chunking*). Si los artículos del manual se fragmentan incorrectamente, el modelo pierde el contexto de las restricciones y genera conclusiones erróneas. Aprender a validar la fidelidad (*groundedness*) mediante pruebas automatizadas cambió mi perspectiva profesional sobre cómo se audita y confía en un sistema inteligente en la industria bancaria.
+## 7. Declaración de Uso de IA y Referencias (APA 7)
+**Uso de IA:** conforme a las indicaciones de la evaluación, el equipo declara que utilizó Claude (Anthropic, 2026) para revisar la completitud del encargo frente a la pauta, corregir y ampliar el código (motor de reglas, recuperación multi-consulta, verificación de citas y evaluador), redactar y revisar este informe y el README, generar los diagramas y capturar la evidencia de pruebas. **[COMPLETAR: otras herramientas de IA usadas y para qué.]** Todo el contenido generado fue revisado y validado por el equipo. **[CONFIRMAR: las conclusiones y reflexiones individuales fueron redactadas por el equipo sin apoyo de IA.]**
 
-### 6.3. Reflexión Individual - Bárbara Bustamante
-> En mi caso, el foco de trabajo estuvo orientado a la orquestación del agente inteligente, la integración de la API externa de indicadores económicos y la sincronización con la base de datos de clientes por RUT. Me pareció especialmente revelador comprobar cómo el patrón de llamada a herramientas (*Tool Calling*) en tiempo real permite superar la obsolescencia de información de los modelos: vincular la Unidad de Fomento del día hábil en vivo con las reglas internas de riesgo convirtió una respuesta genérica en una herramienta de negocio con impacto comercial real. Asimismo, estructurar la gestión de contexto para preservar los datos de la PYME entre turnos conversacionales me permitió entender los desafíos prácticos de latencia y consistencia en soluciones aplicadas.
+Anthropic. (2026). Claude (versión Opus 5.5) [Modelo de lenguaje de gran tamaño]. https://claude.ai
 
-### 6.4. Reflexión Individual - Nelson Carrasco
-> Mi participación se concentró en la ingeniería de prompts, el diseño de guardrails negativos estrictos para mitigación de alucinaciones y la formulación del benchmark de evaluación de coherencia. En un contexto bancario comercial, es imperativo asegurar que el sistema no emita compromisos legales vinculantes, limitándose a una pre-admisibilidad técnica fundamentada. Diseñar reglas de seguridad que derivan al Comité de Crédito los casos que exceden la política institucional (Artículo 11) y certificar cuantitativamente el 100% de coherencia matemática entre UF y pesos consolidó la confiabilidad de la solución.
+Comisión para el Mercado Financiero. (s.f.). Recopilación Actualizada de Normas de Bancos (RAN). https://www.cmfchile.cl/portal/principal/613/w3-propertyvalue-29580.html
 
----
+Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., Küttler, H., Lewis, M., Yih, W., Rocktäschel, T., Riedel, S., & Kiela, D. (2020). Retrieval-augmented generation for knowledge-intensive NLP tasks. Advances in Neural Information Processing Systems, 33, 9459–9474.
 
-## 7. DECLARACIÓN DE USO DE INTELIGENCIA ARTIFICIAL
+mindicador.cl. (s.f.). API de indicadores económicos diarios en Chile. https://mindicador.cl
 
-El equipo declara el uso de IA generativa como apoyo: Claude (Anthropic, 2026) se utilizó para revisar la completitud del encargo frente a la pauta, mejorar la redacción del informe y del README, generar los diagramas Mermaid y automatizar la captura de evidencias de prueba. _[Completar: otras herramientas de IA usadas y para qué]_. Todo el contenido generado fue revisado y validado por el equipo; las reflexiones individuales fueron redactadas por cada integrante sin apoyo de IA.
+Ministerio de Economía, Fomento y Turismo. (2026). MiPymes y emprendimiento. https://www.economia.gob.cl/wp-content/uploads/2026/02/10-03-26-mipymes-y-emprendimiento.pdf
 
-> Nota: la versión oficial entregada es `docs/INFORME_TECNICO_SOLUCION_RAG.docx`; este archivo Markdown es la versión extendida de trabajo.
+Shuster, K., Poff, S., Chen, M., Kiela, D., & Weston, J. (2021). Retrieval augmentation reduces hallucination in conversation. En Findings of the Association for Computational Linguistics: EMNLP 2021 (pp. 3784–3803).
 
----
-
-## 8. REFERENCIAS BIBLIOGRÁFICAS (NORMATIVA APA 7)
-
-* Anthropic. (2026). *Claude* (versión Opus 5.5) [Modelo de lenguaje de gran tamaño]. https://claude.ai
-* Comisión para el Mercado Financiero [CMF]. (s.f.). *Recopilación Actualizada de Normas para Bancos*. https://www.cmfchile.cl
-* Lewis, P., Perez, E., Piktus, A., Petroni, F., Karpukhin, V., Goyal, N., Küttler, H., Lewis, M., Yih, W., Rocktäschel, T., Riedel, S., & Kiela, D. (2020). Retrieval-Augmented Generation for Knowledge-Intensive NLP Tasks. *Advances in Neural Information Processing Systems (NeurIPS)*, 33, 9459–9474.
-* Ministerio de Economía, Fomento y Turismo de Chile. (2024). *Quinta Encuesta Longitudinal de Empresas (ELE): Caracterización de las Micro, Pequeñas y Medianas Empresas*. Gobierno de Chile. https://www.economia.gob.cl
-* Shuster, K., Poff, S., Chen, M., Kiela, D., & Weston, J. (2021). Retrieval Augmentation Reduces Hallucination in Conversation. *Findings of the Association for Computational Linguistics: EMNLP 2021*, 3784–3803.
-* Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2023). ReAct: Synergizing Reasoning and Acting in Language Models. *International Conference on Learning Representations (ICLR 2023)*.
+Yao, S., Zhao, J., Yu, D., Du, N., Shafran, I., Narasimhan, K., & Cao, Y. (2023). ReAct: Synergizing reasoning and acting in language models. International Conference on Learning Representations (ICLR 2023).

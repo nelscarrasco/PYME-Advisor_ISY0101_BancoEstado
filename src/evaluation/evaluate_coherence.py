@@ -1,188 +1,136 @@
 """
-Módulo de Evaluación de Coherencia y Fidelidad Normativa (IE6).
-Implementa métricas de evaluación del pipeline RAG (RAG Triad & Groundedness Evaluation):
-1. Groundedness / Fidelidad: Grado de respaldo de la respuesta en los fragmentos normativos.
-2. Context Relevance: Pertinencia del contexto recuperado frente a la consulta.
-3. Citation Accuracy: Verificación de citas a artículos válidos del Manual de Crédito.
-4. Mathematical Consistency: Verificación del cálculo exacto de conversión UF a CLP.
+Módulo de Evaluación de Coherencia entre Datos Recuperados y Respuestas (IE6).
+
+Métricas calculadas por caso (y promediadas en la batería):
+1. Precisión de dictamen: el estado preliminar coincide con el resultado esperado del caso.
+2. Recall de recuperación (context recall): los artículos que el caso necesita aparecen
+   entre los fragmentos recuperados del índice vectorial.
+3. Recall de citas: la respuesta cita los artículos esperados.
+4. Groundedness de citas: proporción de citas de la respuesta que están respaldadas por un
+   fragmento efectivamente recuperado (una cita sin respaldo cuenta como posible alucinación).
+5. Consistencia matemática: el monto en CLP informado es igual a monto_UF × UF de la herramienta.
+6. Latencia media por consulta.
+Además se compara el recall de recuperación contra una línea base que busca sólo con la
+consulta original (top-3), para medir el aporte de la descomposición en sub-consultas.
 """
 
 import re
-import json
 from typing import Dict, Any, List
 from src.agent.agent_core import PymeAdvisorAgent
+
+
+def _num(s: str) -> str:
+    m = re.search(r"\d+", s)
+    return m.group(0) if m else s
+
 
 class RAGCoherenceEvaluator:
     def __init__(self, agent: PymeAdvisorAgent = None):
         self.agent = agent or PymeAdvisorAgent()
 
-    def evaluate_response(self, query: str, result: Dict[str, Any], ground_truth: Dict[str, Any]) -> Dict[str, Any]:
-        """
-        Evalúa una respuesta individual contra la evidencia recuperada y el estándar normativo.
-        """
-        response_text = result["response"]
-        retrieved_sources = result["retrieved_sources"]
-        economic_data = result["economic_indicators_applied"]
+    TEST_CASES: List[Dict[str, Any]] = [
+        {"name": "Caso 1: Leasing de camión, cliente solvente (Transportes Biobío)",
+         "query": "Represento a Transportes y Logistica Biobio SpA (RUT 76.123.456-K). Queremos 1.500 UF para renovar un camión tolva. ¿Calificamos y cuánto es en pesos?",
+         "expected_status": "PRE-ADMISIBLE", "expected_articles": ["3", "4", "5", "6", "9"], "monto_uf": 1500},
+        {"name": "Caso 2: Morosidad DICOM sobre $500.000 (Panadería El Trigal)",
+         "query": "Panaderia y Alimentos El Trigal EIRL (RUT 76.999.888-4) solicita crédito de 800 UF para capital de trabajo.",
+         "expected_status": "NO ADMISIBLE", "expected_articles": ["4"], "monto_uf": 800},
+        {"name": "Caso 3: Leverage 3,4x y DSCR 1,1 (Constructora del Sur)",
+         "query": "Constructora del Sur SA (RUT 76.543.210-8) solicita ampliación de línea de 4.000 UF.",
+         "expected_status": "DERIVACIÓN A COMITÉ ESPECIAL", "expected_articles": ["5", "11"], "monto_uf": 4000},
+        {"name": "Caso 4: Antigüedad de 5 meses (Frutícola Express)",
+         "query": "Comercializadora Fruticola Express SpA (RUT 78.111.222-1) solicita 500 UF de crédito de capital de trabajo.",
+         "expected_status": "NO ADMISIBLE", "expected_articles": ["3"], "monto_uf": 500},
+        {"name": "Caso 5: Capital de trabajo, cliente que cumple (TecnoAgro)",
+         "query": "TecnoAgro Sustentable Ltda (RUT 77.987.654-3) necesita 600 UF de capital de trabajo para comprar insumos.",
+         "expected_status": "PRE-ADMISIBLE", "expected_articles": ["3", "4", "5", "6", "8"], "monto_uf": 600},
+        {"name": "Caso 6: Monto sobre 10.000 UF (TecnoAgro)",
+         "query": "TecnoAgro Sustentable Ltda (RUT 77.987.654-3) solicita 12.000 UF de capital de trabajo.",
+         "expected_status": "DERIVACIÓN A COMITÉ ESPECIAL", "expected_articles": ["11"], "monto_uf": 12000},
+        {"name": "Caso 7: Consulta general sobre FOGAPE (sin cliente)",
+         "query": "¿Qué requisitos y coberturas tiene la garantía FOGAPE para las PYMEs?",
+         "expected_status": "INFORMACIÓN GENERAL", "expected_articles": ["6"], "monto_uf": None},
+    ]
 
-        # 1. Métrica de Citación Normativa (Citation Accuracy)
-        valid_articles = ["Art. 1", "Art. 2", "Art. 3", "Art. 4", "Art. 5", "Art. 6", "Art. 7", "Art. 8", "Art. 9", "Art. 10", "Art. 11"]
-        cited_articles = re.findall(r"Art(?:[íi]culo|\.)\s*\d+", response_text, re.IGNORECASE)
-        has_citations = len(cited_articles) > 0
+    def evaluate_response(self, case: Dict[str, Any], result: Dict[str, Any]) -> Dict[str, Any]:
+        text = result["response"]
+        expected = set(case["expected_articles"])
 
-        expected_articles = ground_truth.get("expected_articles", [])
-        # Normalizar strings para comparación (ej: "Art. 3" vs "Artículo 3")
-        def norm_art(s):
-            m = re.search(r"\d+", s)
-            return m.group(0) if m else s
+        retrieved = {_num(s["article"]) for s in result["retrieved_sources"] if "Art" in (s["article"] or "")}
+        validation = result["citation_validation"]
+        cited = {_num(c) for c in validation["cited"] if c.startswith("Art")}
 
-        cited_nums = set(norm_art(c) for c in cited_articles)
-        expected_nums = set(norm_art(e) for e in expected_articles)
-        matches = cited_nums.intersection(expected_nums)
-        citation_recall = round(len(matches) / max(len(expected_nums), 1), 3)
+        context_recall = len(expected & retrieved) / len(expected)
+        citation_recall = len(expected & cited) / len(expected)
 
-        # 2. Métrica de Coherencia Matemática (UF <-> CLP)
-        uf_val = economic_data["uf_clp"]
-        math_consistent = True
-        # Buscar menciones de montos en CLP en la respuesta
-        clp_amounts = re.findall(r"\$\s*([\d\.,]+)\s*CLP", response_text)
-        if clp_amounts:
-            expected_clp = ground_truth.get("expected_clp")
-            if expected_clp:
-                parsed_nums = []
-                for amt in clp_amounts:
-                    digits = re.sub(r"[^\d]", "", amt)
-                    if digits:
-                        parsed_nums.append(float(digits))
-                math_consistent = any(abs(n - expected_clp) < 100.0 for n in parsed_nums)
-
-        # 3. Métrica de Fidelidad de Dictamen (Decision Groundedness)
-        expected_status = ground_truth.get("expected_status", "").upper()
-        if expected_status == "INFORMATIVA":
-            status_match = any(w in response_text.upper() for w in ["INFORMACIÓN PRELIMINAR", "FOGAPE", "ASESORÍA", "ESTRUCTURA DE GARANTÍAS"])
-        else:
-            status_match = expected_status in response_text.upper()
-
-        # 4. Context Relevance Score (del Vector Store)
-        avg_similarity = 0.0
-        if retrieved_sources:
-            avg_similarity = round(sum(s["similarity"] for s in retrieved_sources) / len(retrieved_sources), 3)
-
-        # 5. Groundedness Score Global (Puntuación ponderada 0 a 100%)
-        # 40% Dictamen correcto + 30% Citas válidas + 20% Coherencia matemática + 10% Relevancia contextual
-        groundedness_score = 0.0
-        if status_match:
-            groundedness_score += 40.0
-        groundedness_score += citation_recall * 30.0
-        if math_consistent:
-            groundedness_score += 20.0
-        if avg_similarity > 0.05:
-            groundedness_score += 10.0
+        math_ok = True
+        if case["monto_uf"] is not None:
+            uf = result["economic_indicators_applied"]["uf_clp"]
+            expected_clp = round(case["monto_uf"] * uf)
+            found = [int(x.replace(".", "")) for x in re.findall(r"\$([\d\.]+) CLP", text)]
+            math_ok = any(abs(v - expected_clp) <= 1 for v in found)
 
         return {
-            "query": query,
-            "expected_status": expected_status,
-            "status_correct": status_match,
-            "expected_articles": expected_articles,
-            "cited_articles": list(set(cited_articles)),
-            "citation_recall": citation_recall,
-            "math_consistent": math_consistent,
-            "avg_context_similarity": avg_similarity,
-            "groundedness_score": round(groundedness_score, 1),
-            "execution_time_s": result["execution_time_seconds"]
+            "test_case_name": case["name"],
+            "expected_status": case["expected_status"],
+            "obtained_status": result["policy_status"],
+            "status_correct": result["policy_status"] == case["expected_status"] and case["expected_status"] in text,
+            "expected_articles": sorted(expected, key=int),
+            "retrieved_articles": sorted(retrieved, key=int),
+            "cited_citations": validation["cited"],
+            "unsupported_citations": validation["unsupported"],
+            "context_recall": round(context_recall, 3),
+            "citation_recall": round(citation_recall, 3),
+            "groundedness": validation["grounded_ratio"],
+            "math_consistent": math_ok,
+            "baseline_context_recall": round(len(expected & {_num(c["article"]) for c in self.agent.vector_store.search(case["query"], top_k=3) if "Art" in c["article"]}) / len(expected), 3),
+            "top_similarity": max((s["similarity"] for s in result["retrieved_sources"]), default=0.0),
+            "execution_time_s": result["execution_time_seconds"],
+            "generation_mode": result["generation_mode"],
         }
 
     def run_benchmark_suite(self) -> Dict[str, Any]:
-        """
-        Ejecuta la batería de pruebas de evaluación de coherencia en 5 casos organizacionales tipo.
-        """
-        test_cases = [
-            {
-                "name": "Caso 1: Empresa Admisible para Leasing (Biobío SpA)",
-                "query": "Represento a Transportes y Logistica Biobio SpA (RUT 76.123.456-K). Queremos 1.500 UF para renovar un camión tolva. ¿Calificamos y cuánto es en pesos?",
-                "ground_truth": {
-                    "expected_status": "PRE-ADMISIBLE",
-                    "expected_articles": ["Artículo 3", "Artículo 4", "Artículo 6"],
-                    "expected_clp": round(1500 * self.agent.economic_tool.get_indicators()["uf"]["valor"])
-                }
-            },
-            {
-                "name": "Caso 2: Bloqueo por Morosidad Comercial (El Trigal EIRL)",
-                "query": "Panaderia y Alimentos El Trigal EIRL (RUT 76.999.888-4) solicita crédito de 800 UF para capital de trabajo.",
-                "ground_truth": {
-                    "expected_status": "NO ADMISIBLE",
-                    "expected_articles": ["Artículo 4"],
-                    "expected_clp": round(800 * self.agent.economic_tool.get_indicators()["uf"]["valor"])
-                }
-            },
-            {
-                "name": "Caso 3: Derivación a Comité por Alto Leverage (Constructora del Sur)",
-                "query": "Constructora del Sur SA (RUT 76.543.210-8) solicita ampliación de línea de 4.000 UF.",
-                "ground_truth": {
-                    "expected_status": "COMITÉ",
-                    "expected_articles": ["Artículo 11", "Artículo 5"],
-                    "expected_clp": round(4000 * self.agent.economic_tool.get_indicators()["uf"]["valor"])
-                }
-            },
-            {
-                "name": "Caso 4: Empresa con Antigüedad Insuficiente (Frutícola Express)",
-                "query": "Comercializadora Fruticola Express SpA (RUT 78.111.222-1) solicita 500 UF de crédito de capital de trabajo.",
-                "ground_truth": {
-                    "expected_status": "NO ADMISIBLE",
-                    "expected_articles": ["Artículo 3"],
-                    "expected_clp": round(500 * self.agent.economic_tool.get_indicators()["uf"]["valor"])
-                }
-            },
-            {
-                "name": "Caso 5: Consulta Normativa FOGAPE",
-                "query": "¿Qué requisitos y coberturas tiene la garantía FOGAPE para las PYMEs?",
-                "ground_truth": {
-                    "expected_status": "INFORMATIVA",
-                    "expected_articles": ["Artículo 6"],
-                    "expected_clp": None
-                }
-            }
-        ]
-
         results = []
-        for tc in test_cases:
-            res = self.agent.process_query(tc["query"])
-            eval_data = self.evaluate_response(tc["query"], res, tc["ground_truth"])
-            eval_data["test_case_name"] = tc["name"]
-            results.append(eval_data)
+        for case in self.TEST_CASES:
+            self.agent.context_manager.clear()
+            results.append(self.evaluate_response(case, self.agent.process_query(case["query"])))
 
-        # Calcular métricas agregadas
-        total_cases = len(results)
-        status_accuracy = sum(1 for r in results if r["status_correct"] or r["expected_status"] == "INFORMATIVA") / total_cases
-        avg_groundedness = sum(r["groundedness_score"] for r in results) / total_cases
-        math_accuracy = sum(1 for r in results if r["math_consistent"]) / total_cases
-        avg_time = sum(r["execution_time_s"] for r in results) / total_cases
-
-        summary = {
-            "total_evaluated_cases": total_cases,
-            "overall_status_accuracy": f"{status_accuracy*100:.1f}%",
-            "average_groundedness_score": f"{avg_groundedness:.1f}%",
-            "math_consistency_rate": f"{math_accuracy*100:.1f}%",
-            "average_latency_seconds": f"{avg_time:.4f}s",
-            "detailed_case_results": results
+        n = len(results)
+        avg = lambda k: sum(r[k] for r in results) / n
+        return {
+            "total_evaluated_cases": n,
+            "generation_mode": results[0]["generation_mode"],
+            "overall_status_accuracy": f"{avg('status_correct')*100:.1f}%",
+            "context_recall": f"{avg('context_recall')*100:.1f}%",
+            "baseline_context_recall": f"{avg('baseline_context_recall')*100:.1f}%",
+            "citation_recall": f"{avg('citation_recall')*100:.1f}%",
+            "average_groundedness_score": f"{avg('groundedness')*100:.1f}%",
+            "math_consistency_rate": f"{avg('math_consistent')*100:.1f}%",
+            "average_latency_seconds": f"{avg('execution_time_s'):.3f}s",
+            "detailed_case_results": results,
         }
-
-        return summary
 
 
 if __name__ == "__main__":
     evaluator = RAGCoherenceEvaluator()
-    print("Iniciando Batería de Evaluación de Coherencia RAG...")
+    print("Iniciando batería de evaluación de coherencia RAG (IE6)...")
     report = evaluator.run_benchmark_suite()
-    print("\n" + "="*70)
-    print("RESUMEN DE COHERENCIA Y FIDELIDAD NORMATIVA (IE6)")
-    print("="*70)
-    print(f"Precisión de Dictamen: {report['overall_status_accuracy']}")
-    print(f"Score Promedio de Groundedness: {report['average_groundedness_score']}")
-    print(f"Consistencia Matemática (UF/CLP): {report['math_consistency_rate']}")
-    print(f"Latencia Media por Consulta: {report['average_latency_seconds']}")
-    print("\nDetalle por Caso de Prueba:")
+    print("\n" + "=" * 72)
+    print("RESUMEN DE COHERENCIA ENTRE DATOS RECUPERADOS Y RESPUESTAS (IE6)")
+    print("=" * 72)
+    print(f"Casos evaluados:                    {report['total_evaluated_cases']}")
+    print(f"Modo de generación:                 {report['generation_mode']}")
+    print(f"Precisión de dictamen:              {report['overall_status_accuracy']}")
+    print(f"Recall de recuperación (contexto):  {report['context_recall']}")
+    print(f"  (línea base: sólo consulta original, top-3: {report['baseline_context_recall']})")
+    print(f"Recall de citas esperadas:          {report['citation_recall']}")
+    print(f"Groundedness de citas:              {report['average_groundedness_score']}")
+    print(f"Consistencia matemática UF→CLP:     {report['math_consistency_rate']}")
+    print(f"Latencia media por consulta:        {report['average_latency_seconds']}")
+    print("\nDetalle por caso:")
     for r in report["detailed_case_results"]:
-        print(f"\n* [{r['test_case_name']}]")
-        print(f"  - Groundedness: {r['groundedness_score']}% | Dictamen OK: {r['status_correct']}")
-        print(f"  - Citas detectadas: {r['cited_articles']} (Recall: {r['citation_recall']*100:.0f}%)")
-        print(f"  - Coherencia Matemática: {r['math_consistent']}")
+        print(f"\n* {r['test_case_name']}")
+        print(f"  - Estado esperado/obtenido: {r['expected_status']} / {r['obtained_status']} -> {'OK' if r['status_correct'] else 'ERROR'}")
+        print(f"  - Artículos esperados: {r['expected_articles']} | recuperados: {r['retrieved_articles']}")
+        print(f"  - Recall recuperación: {r['context_recall']*100:.0f}% | Recall citas: {r['citation_recall']*100:.0f}% | Groundedness: {r['groundedness']*100:.0f}%")
+        print(f"  - Citas sin respaldo: {r['unsupported_citations'] or 'ninguna'} | UF→CLP consistente: {r['math_consistent']} | Similitud máx.: {r['top_similarity']:.2f}")

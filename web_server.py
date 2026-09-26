@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from pydantic import BaseModel
 from typing import Optional
 
+from src.agent.policy_engine import fmt_num
 from src.agent.agent_core import PymeAdvisorAgent
 from src.tools.economic_indicators import EconomicIndicatorsTool
 from src.evaluation.evaluate_coherence import RAGCoherenceEvaluator
@@ -116,12 +117,12 @@ async def serve_dashboard():
     <header>
         <div class="header-title">
             <h1>BancoEstado Microempresas | PYME-Advisor</h1>
-            <p>ISY0101 Ingeniería de Soluciones con IA | Duoc UC — Equipo: Juan Serna, Bárbara Bustamante, Nelson Carrasco</p>
+            <p>ISY0101 Ingeniería de Soluciones con IA | Duoc UC — Equipo: Juan Serna, Bárbara Bustamante, Nelson Carrasco · Prototipo académico con datos simulados; no es un servicio de BancoEstado</p>
         </div>
         <div class="indicators-bar">
-            <div class="indicator-badge">UF Hoy: <span id="uf-display">${uf_val:,.2f} CLP</span></div>
-            <div class="indicator-badge">Dólar: <span id="dolar-display">${dolar_val:,.2f} CLP</span></div>
-            <div class="indicator-badge">UTM: <span id="utm-display">${utm_val:,.2f} CLP</span></div>
+            <div class="indicator-badge">UF Hoy: <span id="uf-display">${fmt_num(uf_val, 2)} CLP</span></div>
+            <div class="indicator-badge">Dólar: <span id="dolar-display">${fmt_num(dolar_val, 2)} CLP</span></div>
+            <div class="indicator-badge">UTM: <span id="utm-display">${fmt_num(utm_val, 2)} CLP</span></div>
         </div>
     </header>
 
@@ -136,7 +137,7 @@ async def serve_dashboard():
             <div class="chat-history" id="chat-history">
                 <div class="chat-bubble agent">
                     <h3>Bienvenido a PYME-Advisor</h3>
-                    <p>Soy el asistente inteligente de evaluación y riesgo crediticio de <strong>BancoEstado Microempresas</strong>. Puedo asesorarle sobre líneas de financiamiento (Capital de Trabajo, Leasing y Factoring), consultar requisitos normativos, calcular conversiones en tiempo real en UF/CLP y evaluar la pre-admisibilidad de su empresa según las políticas oficiales del banco.</p>
+                    <p>Soy el asistente inteligente de evaluación y riesgo crediticio de <strong>BancoEstado Microempresas</strong>. Puedo asesorarle sobre líneas de financiamiento (Capital de Trabajo, Leasing y Factoring), consultar requisitos normativos, calcular conversiones en tiempo real en UF/CLP y evaluar la pre-admisibilidad de su empresa según el manual de políticas (simulado) del prototipo.</p>
                     <p style="margin-top: 0.5rem; font-size: 0.85rem; color: var(--text-muted);">Puede ingresar el RUT de su empresa o seleccionar uno de los casos de demostración a continuación:</p>
                 </div>
             </div>
@@ -185,11 +186,9 @@ async def serve_dashboard():
                     <div class="benchmark-box">
                         <div style="font-weight: 600; color: #065f46;">Métricas de Calidad y Fidelidad</div>
                         <div id="benchmark-metrics" style="margin-top: 0.3rem;">
-                            - Precisión de Dictamen: <strong>100%</strong><br>
-                            - Groundedness Score: <strong>100%</strong><br>
-                            - Consistencia Matemática: <strong>100%</strong>
+                            Presione el botón para ejecutar la batería de 7 casos.
                         </div>
-                        <button class="benchmark-btn" onclick="runBenchmark()">Re-ejecutar Batería de Pruebas (5 Casos)</button>
+                        <button class="benchmark-btn" onclick="runBenchmark()">Ejecutar Batería de Pruebas (7 Casos)</button>
                     </div>
                 </div>
             </div>
@@ -265,7 +264,9 @@ async def serve_dashboard():
 
                 // Herramientas
                 const toolsDiv = document.getElementById('tools-executed-list');
-                toolsDiv.innerHTML = data.tools_executed.map(t => `<div>• <strong>${{t.tool}}</strong>: ${{t.data}}</div>`).join('');
+                toolsDiv.innerHTML = data.tools_executed.map(t => `<div>• <strong>${{t.tool}}</strong>: ${{t.data}}</div>`).join('')
+                    + `<div>• <strong>Generación</strong>: ${{data.generation_mode}}</div>`
+                    + `<div>• <strong>Guardrail de citas</strong>: ${{data.citation_validation.supported.length}}/${{data.citation_validation.cited.length}} citas respaldadas por fragmentos recuperados</div>`;
 
                 // Fuentes
                 const sourcesDiv = document.getElementById('sources-list');
@@ -275,7 +276,7 @@ async def serve_dashboard():
                             <span>[${{s.article}}] ${{s.heading}}</span>
                             <span class="badge-score">${{(s.similarity*100).toFixed(1)}}%</span>
                         </div>
-                        <div style="color: #64748b; font-size: 0.75rem;">Archivo: ${{s.source}}</div>
+                        <div style="color: #64748b; font-size: 0.75rem;">Archivo: ${{s.source}} · sub-consulta: ${{s.retrieved_for}}</div>
                     </div>
                 `).join('');
 
@@ -296,7 +297,8 @@ async def serve_dashboard():
                 const data = await res.json();
                 document.getElementById('benchmark-metrics').innerHTML = `
                     - Precisión de Dictamen: <strong>${{data.overall_status_accuracy}}</strong><br>
-                    - Groundedness Score: <strong>${{data.average_groundedness_score}}</strong><br>
+                    - Recall de Recuperación: <strong>${{data.context_recall}}</strong> (línea base ${{data.baseline_context_recall}})<br>
+                    - Groundedness de Citas: <strong>${{data.average_groundedness_score}}</strong><br>
                     - Consistencia Matemática: <strong>${{data.math_consistency_rate}}</strong><br>
                     - Latencia Promedio: <strong>${{data.average_latency_seconds}}</strong>
                 `;
