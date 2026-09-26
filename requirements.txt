@@ -1,0 +1,21 @@
+# Dependencias del Proyecto BancoEstado PYME-Advisor RAG
+# ISY0101 - Ingeniería de Soluciones con IA
+
+# Frameworks web y API
+fastapi>=0.115.0
+uvicorn>=0.30.0
+pydantic>=2.8.0
+requests>=2.31.0
+
+# Procesamiento vectorial y científico
+numpy>=1.26.0
+scipy>=1.10.0
+scikit-learn>=1.4.0
+
+# Documentos y formatos
+python-docx>=1.1.0
+pypdf>=4.0.0
+python-dotenv>=1.0.0
+
+# Opcional para inferencia con modelos propietarios
+openai>=1.30.0

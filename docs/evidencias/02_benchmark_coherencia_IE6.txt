@@ -1,0 +1,45 @@
+Iniciando Batería de Evaluación de Coherencia RAG...
+[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+[Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+
+======================================================================
+RESUMEN DE COHERENCIA Y FIDELIDAD NORMATIVA (IE6)
+======================================================================
+Precisión de Dictamen: 100.0%
+Score Promedio de Groundedness: 100.0%
+Consistencia Matemática (UF/CLP): 100.0%
+Latencia Media por Consulta: 0.2088s
+
+Detalle por Caso de Prueba:
+
+* [Caso 1: Empresa Admisible para Leasing (Biobío SpA)]
+  - Groundedness: 100.0% | Dictamen OK: True
+  - Citas detectadas: ['Art. 7', 'Art. 31', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
+  - Coherencia Matemática: True
+
+* [Caso 2: Bloqueo por Morosidad Comercial (El Trigal EIRL)]
+  - Groundedness: 100.0% | Dictamen OK: True
+  - Citas detectadas: ['Art. 8', 'Art. 7', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
+  - Coherencia Matemática: True
+
+* [Caso 3: Derivación a Comité por Alto Leverage (Constructora del Sur)]
+  - Groundedness: 100.0% | Dictamen OK: True
+  - Citas detectadas: ['Art. 8', 'Art. 11', 'Art. 7', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
+  - Coherencia Matemática: True
+
+* [Caso 4: Empresa con Antigüedad Insuficiente (Frutícola Express)]
+  - Groundedness: 100.0% | Dictamen OK: True
+  - Citas detectadas: ['Art. 8', 'Art. 7', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
+  - Coherencia Matemática: True
+
+* [Caso 5: Consulta Normativa FOGAPE]
+  - Groundedness: 100.0% | Dictamen OK: True
+  - Citas detectadas: ['Art. 8', 'Art. 7', 'Art. 5', 'Art. 3', 'Art. 4', 'Art. 6'] (Recall: 100%)
+  - Coherencia Matemática: True

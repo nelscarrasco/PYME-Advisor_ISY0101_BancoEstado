@@ -1,0 +1,33 @@
+test_admissible_case_leasing (test_agent_policies.TestAgentPolicies.test_admissible_case_leasing)
+Verifica que una empresa solvente solicitando camión reciba dictamen PRE-ADMISIBLE y Leasing. ... [Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+ok
+test_derivation_case_high_leverage (test_agent_policies.TestAgentPolicies.test_derivation_case_high_leverage)
+Verifica que empresa con leverage > 3.2 sea derivada a Comité según Art. 11. ... [Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+ok
+test_rejected_case_dicom (test_agent_policies.TestAgentPolicies.test_rejected_case_dicom)
+Verifica que empresa con morosidad > $500.000 sea clasificada NO ADMISIBLE. ... [Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+ok
+test_client_eligibility_rules (test_external_tools.TestExternalTools.test_client_eligibility_rules)
+Verifica el cálculo de reglas duras sobre clientes problemáticos. ... ok
+test_client_lookup_by_rut (test_external_tools.TestExternalTools.test_client_lookup_by_rut)
+Verifica la correcta identificación y limpieza de RUT. ... ok
+test_economic_indicators_structure (test_external_tools.TestExternalTools.test_economic_indicators_structure)
+Verifica que la API o caché entregue valores numéricos positivos de UF, Dólar y UTM. ... [Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+ok
+test_uf_to_clp_conversion_consistency (test_external_tools.TestExternalTools.test_uf_to_clp_conversion_consistency)
+Verifica que la conversión matemática de 1.000 UF a CLP sea exacta. ... [Aviso] No se pudo conectar a la API en vivo (HTTPSConnectionPool(host='mindicador.cl', port=443): Max retries exceeded with url: /api (Caused by ProxyError('Unable to connect to proxy', OSError('Tunnel connection failed: 403 Forbidden')))). Usando valores de contingencia.
+ok
+test_document_loader_loads_required_files (test_rag_pipeline.TestRAGPipeline.test_document_loader_loads_required_files)
+Verifica que se carguen el manual de crédito y el catálogo de productos. ... ok
+test_semantic_chunker_preserves_articles (test_rag_pipeline.TestRAGPipeline.test_semantic_chunker_preserves_articles)
+Verifica que los chunks preserven la identificación de artículos y encabezados. ... ok
+test_vector_search_dicom_retrieves_article_4 (test_rag_pipeline.TestRAGPipeline.test_vector_search_dicom_retrieves_article_4)
+Verifica que la consulta sobre morosidades retorne el Artículo 4. ... ok
+test_vector_search_fogape_retrieves_article_6 (test_rag_pipeline.TestRAGPipeline.test_vector_search_fogape_retrieves_article_6)
+Verifica que la consulta sobre garantías FOGAPE retorne prioritariamente el Artículo 6. ... ok
+
+----------------------------------------------------------------------
+Ran 11 tests in 1.140s
+
+OK
+exit=0

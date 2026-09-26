@@ -1,0 +1,24 @@
+{
+  "_timestamp": 1790371276.6711717,
+  "data": {
+    "uf": {
+      "nombre": "Unidad de Fomento",
+      "valor": 41016.28,
+      "fecha": "2026-09-25T03:00:00.000Z",
+      "unidad": "Pesos Chilenos (CLP)"
+    },
+    "dolar": {
+      "nombre": "Dólar Observado",
+      "valor": 965.71,
+      "fecha": "2026-09-25T03:00:00.000Z",
+      "unidad": "Pesos Chilenos (CLP)"
+    },
+    "utm": {
+      "nombre": "Unidad Tributaria Mensual",
+      "valor": 71721.0,
+      "fecha": "2026-09-01T04:00:00.000Z",
+      "unidad": "Pesos Chilenos (CLP)"
+    },
+    "fuente": "mindicador.cl / Banco Central de Chile"
+  }
+}
